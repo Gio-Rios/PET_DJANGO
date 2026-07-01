@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}Cadastrar Pet — Get a Pet{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="form-card" style="max-width:560px">
+    <h2>Cadastrar Pet</h2>
+    <div class="alert" id="msg"></div>
+
+    <form id="pet-form">
+      <div class="form-group">
+        <label>Nome do pet</label>
+        <input type="text" id="name" placeholder="Ex: Rex" required>
+      </div>
+      <div class="form-group">
+        <label>Idade</label>
+        <input type="text" id="age" placeholder="Ex: 3 anos" required>
+      </div>
+      <div class="form-group">
+        <label>Peso</label>
+        <input type="text" id="weight" placeholder="Ex: 5 kg" required>
+      </div>
+      <div class="form-group">
+        <label>Cor</label>
+        <input type="text" id="color" placeholder="Ex: Marrom e branco" required>
+      </div>
+      <div class="form-group">
+        <label>Fotos (pode selecionar várias)</label>
+        <input type="file" id="images" accept="image/*" multiple required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">Cadastrar Pet</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+if (!getToken()) window.location.href = '/users/login/';
+
+document.getElementById('pet-form').addEventListener('submit', async e => {
+  e.preventDefault();
+
+  const fd = new FormData();
+  fd.append('name', document.getElementById('name').value);
+  fd.append('age', document.getElementById('age').value);
+  fd.append('weight', document.getElementById('weight').value);
+  fd.append('color', document.getElementById('color').value);
+
+  const files = document.getElementById('images').files;
+  for (const file of files) fd.append('images', file);
+
+  const res = await apiFetch('/pets/', { method: 'POST', body: fd });
+  const data = await res.json();
+
+  if (res.ok) {
+    showAlert('#msg', data.message, 'success');
+    setTimeout(() => window.location.href = '/pets/mypets/', 1500);
+  } else {
+    showAlert('#msg', data.message || 'Erro ao cadastrar pet.');
+  }
+});
+</script>
+{% endblock %}

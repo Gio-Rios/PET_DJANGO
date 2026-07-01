@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Entrar — Get a Pet{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="form-card">
+    <h2>Entrar</h2>
+    <div class="alert" id="msg"></div>
+
+    <form id="login-form">
+      <div class="form-group">
+        <label>E-mail</label>
+        <input type="email" id="email" placeholder="seu@email.com" required>
+      </div>
+      <div class="form-group">
+        <label>Senha</label>
+        <input type="password" id="password" placeholder="Sua senha" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">Entrar</button>
+    </form>
+
+    <p style="text-align:center;margin-top:1rem;font-size:.9rem;">
+      Não tem conta? <a href="/users/register/">Cadastre-se</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Redireciona para home se já está logado
+if (getToken()) window.location.href = '/';
+
+document.getElementById('login-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const res = await apiFetch('/users/login/', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: document.getElementById('email').value,
+      password: document.getElementById('password').value,
+    }),
+  });
+  const data = await res.json();
+  if (res.ok) {
+    setSession(data);
+    window.location.href = '/';
+  } else {
+    showAlert('#msg', data.message || 'Erro ao fazer login.');
+  }
+});
+</script>
+{% endblock %}

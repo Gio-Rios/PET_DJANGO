@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}Detalhe do Pet — Get a Pet{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:700px">
+  <div class="alert" id="msg"></div>
+  <div id="pet-detail"><p>Carregando...</p></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const petId = window.location.pathname.split('/').filter(Boolean).pop();
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const res = await apiFetch(`/pets/${petId}/`);
+  if (!res.ok) {
+    document.getElementById('pet-detail').innerHTML = '<p>Pet não encontrado.</p>';
+    return;
+  }
+  const { pet } = await res.json();
+  const user = getUser();
+
+  const images = pet.images.map(i =>
+    `<img src="${i.image}" alt="${pet.name}" style="width:100%;max-height:380px;object-fit:cover;border-radius:10px;margin-bottom:.8rem">`
+  ).join('');
+
+  const badge = pet.available
+    ? '<span class="badge badge-available" style="font-size:1rem;padding:.3rem .9rem">Disponível</span>'
+    : '<span class="badge badge-unavailable" style="font-size:1rem;padding:.3rem .9rem">Adotado</span>';
+
+  const adopter = pet.adopter_name
+    ? `<p><strong>Adotante agendado:</strong> ${pet.adopter_name}</p>` : '';
+
+  let actions = '';
+  if (user) {
+    if (user.id === pet.owner && pet.available && pet.adopter) {
+      actions = `<button class="btn btn-accent" onclick="conclude()">Concluir adoção</button>`;
+    } else if (user.id !== pet.owner && pet.available) {
+      actions = `<button class="btn btn-primary" onclick="schedule()">Agendar visita</button>`;
+    }
+  }
+
+  document.getElementById('pet-detail').innerHTML = `
+    ${images}
+    <div style="background:#fff;border-radius:10px;box-shadow:var(--shadow);padding:1.5rem;margin-top:1rem">
+      ${badge}
+      <h1 style="margin:.6rem 0;color:var(--primary)">${pet.name}</h1>
+      <p><strong>Idade:</strong> ${pet.age}</p>
+      <p><strong>Peso:</strong> ${pet.weight}</p>
+      <p><strong>Cor:</strong> ${pet.color}</p>
+      <p><strong>Dono:</strong> ${pet.owner_name} — ${pet.owner_phone}</p>
+      ${adopter}
+      <div style="margin-top:1.2rem;display:flex;gap:.8rem">
+        ${actions}
+        <a href="/" class="btn btn-outline">Voltar</a>
+      </div>
+    </div>`;
+});
+
+async function schedule() {
+  if (!getToken()) { window.location.href = '/users/login/'; return; }
+  const res = await apiFetch(`/pets/${petId}/schedule/`, { method: 'PATCH' });
+  const data = await res.json();
+  showAlert('#msg', data.message, res.ok ? 'success' : 'error');
+}
+
+async function conclude() {
+  const res = await apiFetch(`/pets/${petId}/conclude/`, { method: 'PATCH' });
+  const data = await res.json();
+  showAlert('#msg', data.message, res.ok ? 'success' : 'error');
+  if (res.ok) setTimeout(() => location.reload(), 2000);
+}
+</script>
+{% endblock %}

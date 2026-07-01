@@ -1,0 +1,132 @@
+"""
+--- CAMADA: Services (Regras de Negócio) ---
+
+Toda a lógica de adoção vive aqui — não nas views, não nos serializers.
+Views apenas chamam o serviço e devolvem a resposta HTTP.
+
+Princípio S (SOLID): serviço responsável exclusivamente pelas regras do domínio.
+Princípio D (SOLID): dependências injetadas (factory, repository, strategy).
+"""
+from apps.pets.factories import PetFactory
+from apps.pets.models import Pet
+from apps.pets.repositories import PetRepository
+from patterns.singleton import app_config
+from patterns.strategies.validation_strategy import PetCreationValidationStrategy
+
+
+class PetService:
+    """Serviço de regras de negócio para Pets e fluxo de adoção."""
+
+    def __init__(
+        self,
+        repository: PetRepository | None = None,
+        factory: type[PetFactory] | None = None,
+    ):
+        # Princípio D: dependências injetáveis; defaults convenientes
+        self.repo = repository or PetRepository()
+        self.factory = factory or PetFactory
+
+    def create_pet(self, owner, data: dict, image_files: list) -> Pet:
+        """Cria um pet com imagens, aplicando validação por Strategy."""
+        # Strategy Pattern: delega a validação à estratégia correta
+        validator = PetCreationValidationStrategy()
+        valid, message = validator.validate(data)
+        if not valid:
+            raise ValueError(message)
+
+        if not image_files:
+            raise ValueError('A imagem é obrigatória!')
+
+        # Factory Pattern: cria a entidade Pet
+        pet = self.factory.create(
+            owner=owner,
+            name=data['name'],
+            age=data['age'],
+            weight=data['weight'],
+            color=data['color'],
+        )
+
+        for image_file in image_files:
+            self.repo.add_image(pet, image_file)
+
+        app_config.log_info(f'Pet criado: {pet.name} (dono: {owner.email})')
+        return pet
+
+    def update_pet(self, pet_id: int, requesting_user, data: dict, image_files: list) -> Pet:
+        """Atualiza pet. Somente o dono pode atualizar."""
+        pet = self._get_and_authorize(pet_id, requesting_user)
+
+        validator = PetCreationValidationStrategy()
+        valid, message = validator.validate(data)
+        if not valid:
+            raise ValueError(message)
+
+        pet.name = data['name']
+        pet.age = data['age']
+        pet.weight = data['weight']
+        pet.color = data['color']
+
+        available = data.get('available')
+        if available is not None:
+            pet.available = available
+
+        if image_files:
+            self.repo.delete_images(pet)
+            for image_file in image_files:
+                self.repo.add_image(pet, image_file)
+
+        self.repo.save(pet)
+        return pet
+
+    def delete_pet(self, pet_id: int, requesting_user) -> None:
+        """Remove pet e suas imagens. Somente o dono pode remover."""
+        pet = self._get_and_authorize(pet_id, requesting_user)
+        self.repo.delete_images(pet)
+        self.repo.delete(pet)
+        app_config.log_info(f'Pet removido: id={pet_id}')
+
+    def schedule_visit(self, pet_id: int, requesting_user) -> dict:
+        """Agenda visita de adoção. Aplica regras de negócio do domínio."""
+        pet = self.repo.get_by_id(pet_id)
+        if not pet:
+            raise LookupError('Pet não encontrado!')
+
+        # Regra 1: não pode agendar visita no próprio pet
+        if pet.owner_id == requesting_user.pk:
+            raise PermissionError('Não é permitido agendar visita para o seu próprio Pet!')
+
+        # Regra 2: não pode agendar duas vezes o mesmo pet
+        if pet.adopter_id == requesting_user.pk:
+            raise PermissionError('Você já agendou uma visita para este Pet!')
+
+        pet.adopter = requesting_user
+        self.repo.save(pet)
+
+        app_config.log_info(f'Visita agendada: pet={pet_id}, adotante={requesting_user.email}')
+        return {
+            'message': (
+                f'A visita foi agendada com sucesso, entre em contato com '
+                f'{pet.owner.name} pelo telefone {pet.owner.phone}'
+            )
+        }
+
+    def conclude_adoption(self, pet_id: int, requesting_user) -> dict:
+        """Conclui o ciclo de adoção. Somente o dono pode concluir."""
+        pet = self._get_and_authorize(pet_id, requesting_user)
+        pet.available = False
+        self.repo.save(pet)
+        app_config.log_info(f'Adoção concluída: pet={pet_id}')
+        return {'message': 'Parabéns! O ciclo de adoção foi finalizado com sucesso!'}
+
+    # --- Auxiliares privados ---
+
+    def _get_and_authorize(self, pet_id: int, user) -> Pet:
+        """Busca o pet e verifica que o usuário é o dono."""
+        pet = self.repo.get_by_id(pet_id)
+        if not pet:
+            raise LookupError('Pet não encontrado!')
+        if pet.owner_id != user.pk:
+            raise PermissionError(
+                'Houve um problema em processar a sua solicitação, tente novamente mais tarde!'
+            )
+        return pet

@@ -1,0 +1,109 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Get a Pet{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="/" class="logo">Get a <span>Pet</span></a>
+  <div class="nav-links" id="nav-links">
+    <a href="/">Início</a>
+    <!-- Links dinâmicos injetados pelo JS conforme autenticação -->
+    <span id="nav-auth"></span>
+  </div>
+</nav>
+
+{% block content %}{% endblock %}
+
+<footer>
+  <p>Get a Pet &copy; 2025 &mdash; Laboratório de Desenvolvimento de Software</p>
+</footer>
+
+<script>
+/* ====================================================
+   Utilitários globais de autenticação e fetch com JWT
+   ==================================================== */
+
+const API = '/api';
+
+function getToken() {
+  return localStorage.getItem('access_token');
+}
+
+function getUser() {
+  const raw = localStorage.getItem('current_user');
+  return raw ? JSON.parse(raw) : null;
+}
+
+function setSession(data) {
+  localStorage.setItem('access_token', data.access);
+  localStorage.setItem('refresh_token', data.refresh);
+  localStorage.setItem('current_user', JSON.stringify(data.user));
+}
+
+function clearSession() {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('current_user');
+}
+
+async function apiFetch(path, options = {}) {
+  const token = getToken();
+  const headers = { ...(options.headers || {}) };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  // Não define Content-Type para FormData (o browser cuida do multipart boundary)
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  const res = await fetch(API + path, { ...options, headers });
+  return res;
+}
+
+/* Injeta links de navegação conforme estado de autenticação */
+function renderNav() {
+  const user = getUser();
+  const nav = document.getElementById('nav-auth');
+  if (!nav) return;
+
+  if (user) {
+    nav.innerHTML = `
+      <a href="/pets/create/">Cadastrar Pet</a>
+      <a href="/pets/mypets/">Meus Pets</a>
+      <a href="/users/profile/">Olá, ${user.name.split(' ')[0]}</a>
+      <a href="#" class="nav-btn" id="btn-logout">Sair</a>
+    `;
+    document.getElementById('btn-logout').addEventListener('click', e => {
+      e.preventDefault();
+      clearSession();
+      window.location.href = '/';
+    });
+  } else {
+    nav.innerHTML = `
+      <a href="/users/login/">Entrar</a>
+      <a href="/users/register/" class="nav-btn">Cadastrar</a>
+    `;
+  }
+}
+
+function showAlert(selector, message, type = 'error') {
+  const el = document.querySelector(selector);
+  if (!el) return;
+  el.textContent = message;
+  el.className = `alert alert-${type}`;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 5000);
+}
+
+document.addEventListener('DOMContentLoaded', renderNav);
+</script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

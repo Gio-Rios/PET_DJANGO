@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block title %}Meu Perfil — Get a Pet{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="form-card" style="max-width:560px">
+    <h2>Editar Perfil</h2>
+    <div class="alert" id="msg"></div>
+
+    <div style="text-align:center;margin-bottom:1.2rem">
+      <img id="preview-img" src="" alt="Foto de perfil"
+           style="width:100px;height:100px;border-radius:50%;object-fit:cover;border:3px solid var(--primary);display:none">
+    </div>
+
+    <form id="profile-form" enctype="multipart/form-data">
+      <div class="form-group">
+        <label>Foto de perfil</label>
+        <input type="file" id="image" accept="image/*">
+      </div>
+      <div class="form-group">
+        <label>Nome completo</label>
+        <input type="text" id="name" required>
+      </div>
+      <div class="form-group">
+        <label>E-mail</label>
+        <input type="email" id="email" required>
+      </div>
+      <div class="form-group">
+        <label>Telefone</label>
+        <input type="text" id="phone" required>
+      </div>
+      <div class="form-group">
+        <label>Nova senha (deixe em branco para manter)</label>
+        <input type="password" id="password" placeholder="Mínimo 6 caracteres">
+      </div>
+      <div class="form-group">
+        <label>Confirmar nova senha</label>
+        <input type="password" id="confirmpassword">
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">Salvar alterações</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+if (!getToken()) window.location.href = '/users/login/';
+
+const user = getUser();
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (!user) return;
+  document.getElementById('name').value = user.name || '';
+  document.getElementById('email').value = user.email || '';
+  document.getElementById('phone').value = user.phone || '';
+
+  if (user.image) {
+    const img = document.getElementById('preview-img');
+    img.src = user.image;
+    img.style.display = 'block';
+  }
+});
+
+document.getElementById('image').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = document.getElementById('preview-img');
+    img.src = ev.target.result;
+    img.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('profile-form').addEventListener('submit', async e => {
+  e.preventDefault();
+
+  const fd = new FormData();
+  fd.append('name', document.getElementById('name').value);
+  fd.append('email', document.getElementById('email').value);
+  fd.append('phone', document.getElementById('phone').value);
+  fd.append('password', document.getElementById('password').value);
+  fd.append('confirmpassword', document.getElementById('confirmpassword').value);
+  const img = document.getElementById('image').files[0];
+  if (img) fd.append('image', img);
+
+  const res = await apiFetch(`/users/${user.id}/edit/`, { method: 'PATCH', body: fd });
+  const data = await res.json();
+
+  if (res.ok) {
+    localStorage.setItem('current_user', JSON.stringify(data.user));
+    showAlert('#msg', data.message, 'success');
+  } else {
+    showAlert('#msg', data.message || 'Erro ao atualizar perfil.');
+  }
+});
+</script>
+{% endblock %}

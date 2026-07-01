@@ -1,0 +1,68 @@
+"""
+--- CAMADA: Serializers (Validação e Serialização) ---
+
+Convertem instâncias de Pet para JSON e validam dados de entrada.
+Não contêm regras de negócio — apenas estrutura e formato dos dados.
+
+Princípio S (SOLID): cada serializer tem uma única responsabilidade.
+"""
+from rest_framework import serializers
+
+from apps.pets.models import Pet, PetImage
+
+
+class PetImageSerializer(serializers.ModelSerializer):
+    """Serializa imagens de pet com URL absoluta."""
+
+    class Meta:
+        model = PetImage
+        fields = ['id', 'image']
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        request = self.context.get('request')
+        if request and instance.image:
+            rep['image'] = request.build_absolute_uri(instance.image.url)
+        return rep
+
+
+class PetSerializer(serializers.ModelSerializer):
+    """Serializa Pet completo para leitura (com imagens e dados do dono)."""
+
+    images = PetImageSerializer(many=True, read_only=True)
+    owner_name = serializers.CharField(source='owner.name', read_only=True)
+    owner_phone = serializers.CharField(source='owner.phone', read_only=True)
+    owner_email = serializers.CharField(source='owner.email', read_only=True)
+    adopter_name = serializers.SerializerMethodField()
+    adopter_image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Pet
+        fields = [
+            'id', 'name', 'age', 'weight', 'color', 'available',
+            'owner', 'owner_name', 'owner_phone', 'owner_email',
+            'adopter', 'adopter_name', 'adopter_image',
+            'images', 'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'owner', 'adopter', 'available', 'created_at', 'updated_at',
+        ]
+
+    def get_adopter_name(self, obj) -> str | None:
+        return obj.adopter.name if obj.adopter else None
+
+    def get_adopter_image(self, obj) -> str | None:
+        request = self.context.get('request')
+        if obj.adopter and obj.adopter.image and request:
+            return request.build_absolute_uri(obj.adopter.image.url)
+        return None
+
+
+class PetCreateSerializer(serializers.Serializer):
+    """Deserializa dados para criação/atualização de pet (sem ORM direto)."""
+
+    name = serializers.CharField(max_length=100)
+    age = serializers.CharField(max_length=50)
+    weight = serializers.CharField(max_length=50)
+    color = serializers.CharField(max_length=50)
+    available = serializers.BooleanField(required=False, default=True)

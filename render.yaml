@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: get-a-pet-django
+    env: python
+    buildCommand: "pip install uv && uv sync && uv run python manage.py collectstatic --noinput"
+    startCommand: "gunicorn core.wsgi"
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: get-a-pet-db
+          property: connectionString
+
+databases:
+  - name: get-a-pet-db
+    databaseName: get_a_pet
+    user: get_a_pet_user

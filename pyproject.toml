@@ -1,0 +1,30 @@
+[project]
+name = "get-a-pet-django"
+version = "0.1.0"
+description = "Sistema de adoção de pets - Laboratório de Desenvolvimento de Software"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "django>=5.0",
+    "djangorestframework>=3.15",
+    "djangorestframework-simplejwt>=5.3",
+    "pillow>=10.3",
+    "python-decouple>=3.8",
+    "dj-database-url>=2.1",
+    "drf-spectacular>=0.27",
+    "whitenoise>=6.6",
+    "gunicorn>=21.2",
+    "psycopg2-binary>=2.9",
+    "django-cors-headers>=4.3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-django>=4.8",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "core.settings"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+python_paths = ["."]

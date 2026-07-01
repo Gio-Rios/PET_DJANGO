@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}Get a Pet — Adote um amigo{% endblock %}
+
+{% block content %}
+<div class="hero">
+  <h1>Adote um Pet</h1>
+  <p>Encontre seu novo melhor amigo e dê um lar cheio de amor.</p>
+</div>
+
+<div class="container">
+  <h2 class="section-title">Pets disponíveis para adoção</h2>
+  <div class="alert" id="msg"></div>
+  <div class="pets-grid" id="pets-grid">
+    <p>Carregando...</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const grid = document.getElementById('pets-grid');
+
+  const res = await apiFetch('/pets/');
+  const data = await res.json();
+
+  if (!data.pets || data.pets.length === 0) {
+    grid.innerHTML = `
+      <div class="empty-state" style="grid-column:1/-1">
+        <p>Nenhum pet disponível no momento. Seja o primeiro a cadastrar!</p>
+        <a href="/pets/create/" class="btn btn-primary" style="margin-top:1rem">Cadastrar Pet</a>
+      </div>`;
+    return;
+  }
+
+  const currentUser = getUser();
+
+  grid.innerHTML = data.pets.map(pet => {
+    const img = pet.images[0]?.image || 'https://via.placeholder.com/260x200?text=Sem+foto';
+    const badge = pet.available
+      ? '<span class="badge badge-available">Disponível</span>'
+      : '<span class="badge badge-unavailable">Adotado</span>';
+
+    let actionBtn = '';
+    if (pet.available && currentUser && currentUser.id !== pet.owner) {
+      actionBtn = `<button class="btn btn-accent btn-sm" onclick="schedule(${pet.id})">Agendar visita</button>`;
+    }
+
+    return `
+      <div class="pet-card">
+        <img src="${img}" alt="${pet.name}">
+        <div class="pet-card-body">
+          ${badge}
+          <h3>${pet.name}</h3>
+          <div class="pet-info">
+            Idade: ${pet.age}<br>
+            Peso: ${pet.weight}<br>
+            Cor: ${pet.color}
+          </div>
+          <div class="owner-info">Dono: ${pet.owner_name}</div>
+        </div>
+        <div class="actions">
+          <a href="/pets/${pet.id}/" class="btn btn-outline btn-sm">Ver detalhes</a>
+          ${actionBtn}
+        </div>
+      </div>`;
+  }).join('');
+});
+
+async function schedule(petId) {
+  if (!getToken()) {
+    window.location.href = '/users/login/';
+    return;
+  }
+  const res = await apiFetch(`/pets/${petId}/schedule/`, { method: 'PATCH' });
+  const data = await res.json();
+  showAlert('#msg', data.message, res.ok ? 'success' : 'error');
+  if (res.ok) setTimeout(() => location.reload(), 2000);
+}
+</script>
+{% endblock %}
