@@ -35,14 +35,27 @@ body {
 .navbar .logo { font-size: 1.4rem; letter-spacing: 1px; }
 .navbar .logo span { color: var(--accent); }
 
-.nav-links { display: flex; gap: 1.2rem; align-items: center; }
+.nav-links { display: flex; gap: 2rem; align-items: center; }
 .nav-links a:hover { color: var(--accent); }
+#nav-auth {
+  display: flex;
+  align-items: center;
+  padding-left: 1.75rem;
+  border-left: 1px solid rgba(255,255,255,.3);
+}
+#nav-auth a + a:not(.nav-btn) {
+  margin-left: 1.75rem;
+  padding-left: 1.75rem;
+  border-left: 1px solid rgba(255,255,255,.3);
+}
+.nav-greeting { font-weight: 400; opacity: .85; }
 .nav-btn {
   background: var(--accent);
-  padding: .4rem 1rem;
+  padding: .4rem 1.1rem;
   border-radius: 20px;
   font-size: .9rem;
 }
+#nav-auth a.nav-btn { margin-left: 2.25rem; }
 .nav-btn:hover { background: #c0146e; color: #fff !important; }
 
 /* ===== Sino de notificações ===== */
