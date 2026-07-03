@@ -10,6 +10,7 @@ Princípio D (SOLID): dependências injetadas (factory, repository, strategy).
 from apps.pets.factories import PetFactory
 from apps.pets.models import Pet
 from apps.pets.repositories import PetRepository
+from apps.users.services import NotificationService
 from patterns.singleton import app_config
 from patterns.strategies.validation_strategy import PetCreationValidationStrategy
 
@@ -21,10 +22,12 @@ class PetService:
         self,
         repository: PetRepository | None = None,
         factory: type[PetFactory] | None = None,
+        notification_service: NotificationService | None = None,
     ):
         # Princípio D: dependências injetáveis; defaults convenientes
         self.repo = repository or PetRepository()
         self.factory = factory or PetFactory
+        self.notifications = notification_service or NotificationService()
 
     def create_pet(self, owner, data: dict, image_files: list) -> Pet:
         """Cria um pet com imagens, aplicando validação por Strategy."""
@@ -122,6 +125,12 @@ class PetService:
 
         pet.adopter = requesting_user
         self.repo.save(pet)
+
+        self.notifications.notify(
+            pet.owner,
+            f'{requesting_user.name} agendou uma visita para adotar {pet.name}.',
+            pet=pet,
+        )
 
         app_config.log_info(f'Visita agendada: pet={pet_id}, adotante={requesting_user.email}')
         return {
