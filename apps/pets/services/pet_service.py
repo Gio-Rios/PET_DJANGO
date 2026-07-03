@@ -36,6 +36,8 @@ class PetService:
 
         if not image_files:
             raise ValueError('A imagem é obrigatória!')
+        if len(image_files) > 4:
+            raise ValueError('Você pode enviar no máximo 4 fotos por pet.')
 
         # Factory Pattern: cria a entidade Pet
         pet = self.factory.create(
@@ -46,8 +48,9 @@ class PetService:
             color=data['color'],
         )
 
-        for image_file in image_files:
-            self.repo.add_image(pet, image_file)
+        cover_index = data.get('cover_index', 0)
+        for idx, image_file in enumerate(image_files):
+            self.repo.add_image(pet, image_file, is_cover=(idx == cover_index))
 
         app_config.log_info(f'Pet criado: {pet.name} (dono: {owner.email})')
         return pet
@@ -66,14 +69,32 @@ class PetService:
         pet.weight = data['weight']
         pet.color = data['color']
 
-        available = data.get('available')
-        if available is not None:
-            pet.available = available
+        delete_ids = data.get('delete_image_ids') or []
+        remaining_after_delete = (
+            pet.images.exclude(pk__in=delete_ids).count() if delete_ids else pet.images.count()
+        )
+        final_count = remaining_after_delete + len(image_files)
+        if final_count > 4:
+            raise ValueError('Você pode ter no máximo 4 fotos por pet.')
+        if final_count == 0:
+            raise ValueError('O pet precisa ter ao menos uma foto.')
 
-        if image_files:
-            self.repo.delete_images(pet)
-            for image_file in image_files:
-                self.repo.add_image(pet, image_file)
+        if delete_ids:
+            self.repo.delete_images_by_ids(pet, delete_ids)
+
+        new_images = [self.repo.add_image(pet, image_file, is_cover=False) for image_file in image_files]
+
+        cover_existing_id = data.get('cover_existing_id')
+        if cover_existing_id:
+            self.repo.set_cover(pet, cover_existing_id)
+        elif new_images:
+            cover_index = data.get('cover_index', 0)
+            if 0 <= cover_index < len(new_images):
+                self.repo.set_cover(pet, new_images[cover_index].id)
+        elif delete_ids and not pet.images.filter(is_cover=True).exists():
+            first = pet.images.order_by('id').first()
+            if first:
+                self.repo.set_cover(pet, first.id)
 
         self.repo.save(pet)
         return pet

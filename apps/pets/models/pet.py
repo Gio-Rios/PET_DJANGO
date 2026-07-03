@@ -59,10 +59,12 @@ class PetImage(models.Model):
         verbose_name='Pet',
     )
     image = models.ImageField('Imagem', upload_to='pets/')
+    is_cover = models.BooleanField('Capa (miniatura)', default=False)
 
     class Meta:
         verbose_name = 'Imagem do Pet'
         verbose_name_plural = 'Imagens do Pet'
+        ordering = ['-is_cover', 'id']
 
     def __str__(self) -> str:
         return f'Imagem de {self.pet.name}'

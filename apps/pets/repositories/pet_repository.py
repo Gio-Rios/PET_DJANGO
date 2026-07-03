@@ -60,11 +60,22 @@ class PetRepository:
         pet.delete()
 
     @staticmethod
-    def add_image(pet: Pet, image_file) -> PetImage:
-        return PetImage.objects.create(pet=pet, image=image_file)
+    def add_image(pet: Pet, image_file, is_cover: bool = False) -> PetImage:
+        return PetImage.objects.create(pet=pet, image=image_file, is_cover=is_cover)
 
     @staticmethod
     def delete_images(pet: Pet) -> None:
         for img in pet.images.all():
             img.image.delete(save=False)
             img.delete()
+
+    @staticmethod
+    def delete_images_by_ids(pet: Pet, image_ids: list) -> None:
+        for img in pet.images.filter(pk__in=image_ids):
+            img.image.delete(save=False)
+            img.delete()
+
+    @staticmethod
+    def set_cover(pet: Pet, image_id: int) -> None:
+        pet.images.update(is_cover=False)
+        pet.images.filter(pk=image_id).update(is_cover=True)
