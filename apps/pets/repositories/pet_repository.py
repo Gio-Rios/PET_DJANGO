@@ -14,9 +14,10 @@ class PetRepository:
 
     @staticmethod
     def get_all():
-        """Retorna todos os pets com joins otimizados."""
+        """Retorna os pets disponíveis para adoção (usado na listagem pública)."""
         return (
             Pet.objects
+            .filter(available=True)
             .select_related('owner', 'adopter')
             .prefetch_related('images')
             .order_by('-created_at')
