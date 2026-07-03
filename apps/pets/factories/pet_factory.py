@@ -18,6 +18,7 @@ class PetFactory:
         """Cria e persiste um Pet com available=True por padrão."""
         pet = Pet(
             owner=owner,
+            original_owner=owner,
             name=name,
             age=age,
             weight=weight,
@@ -32,6 +33,7 @@ class PetFactory:
         """Constrói um Pet em memória sem persistir (útil em testes)."""
         return Pet(
             owner=owner,
+            original_owner=owner,
             name=name,
             age=age,
             weight=weight,

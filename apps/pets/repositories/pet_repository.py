@@ -34,20 +34,45 @@ class PetRepository:
 
     @staticmethod
     def get_by_owner(user):
+        """Pets que o usuário cadastrou e ainda possui (não adotados por ninguém)."""
         return (
             Pet.objects
-            .filter(owner=user)
+            .filter(owner=user, original_owner=user)
             .prefetch_related('images')
             .order_by('-created_at')
         )
 
     @staticmethod
     def get_by_adopter(user):
+        """Visitas de adoção agendadas pelo usuário, ainda não concluídas."""
         return (
             Pet.objects
             .filter(adopter=user)
+            .exclude(owner=user)
             .prefetch_related('images')
             .order_by('-created_at')
+        )
+
+    @staticmethod
+    def get_adopted_by(user):
+        """Pets que este usuário adotou de outra pessoa (posse já transferida)."""
+        return (
+            Pet.objects
+            .filter(owner=user)
+            .exclude(original_owner=user)
+            .prefetch_related('images')
+            .order_by('-updated_at')
+        )
+
+    @staticmethod
+    def get_given_away_by(user):
+        """Pets que este usuário cadastrou e que foram adotados por outra pessoa."""
+        return (
+            Pet.objects
+            .filter(original_owner=user)
+            .exclude(owner=user)
+            .prefetch_related('images')
+            .order_by('-updated_at')
         )
 
     @staticmethod

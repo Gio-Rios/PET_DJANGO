@@ -141,12 +141,51 @@ class PetService:
         }
 
     def conclude_adoption(self, pet_id: int, requesting_user) -> dict:
-        """Conclui o ciclo de adoção. Somente o dono pode concluir."""
+        """Conclui o ciclo de adoção. Somente o dono pode concluir.
+
+        Transfere a posse do pet para o adotante: ele passa a ser o novo
+        dono e some da lista de pets do dono anterior.
+        """
         pet = self._get_and_authorize(pet_id, requesting_user)
+        if not pet.adopter_id:
+            raise ValueError('Não há adotante agendado para concluir a adoção.')
+
+        adopter = pet.adopter
         pet.available = False
+        pet.owner = pet.adopter
         self.repo.save(pet)
-        app_config.log_info(f'Adoção concluída: pet={pet_id}')
+
+        self.notifications.notify(
+            adopter,
+            f'Sua solicitação de adoção de {pet.name} foi aceita! Parabéns.',
+            pet=pet,
+        )
+
+        app_config.log_info(f'Adoção concluída: pet={pet_id}, novo dono={adopter.email}')
         return {'message': 'Parabéns! O ciclo de adoção foi finalizado com sucesso!'}
+
+    def deny_adoption(self, pet_id: int, requesting_user) -> dict:
+        """Nega a solicitação de adoção agendada. Somente o dono pode negar.
+
+        Remove o adotante agendado e mantém o pet disponível, para que o
+        dono continue procurando outro interessado.
+        """
+        pet = self._get_and_authorize(pet_id, requesting_user)
+        if not pet.adopter_id:
+            raise ValueError('Não há adotante agendado para negar.')
+
+        denied_adopter = pet.adopter
+        pet.adopter = None
+        self.repo.save(pet)
+
+        self.notifications.notify(
+            denied_adopter,
+            f'Sua solicitação de adoção de {pet.name} foi negada pelo dono.',
+            pet=pet,
+        )
+
+        app_config.log_info(f'Adoção negada: pet={pet_id}')
+        return {'message': 'Solicitação de adoção negada. O pet continua disponível para adoção.'}
 
     # --- Auxiliares privados ---
 

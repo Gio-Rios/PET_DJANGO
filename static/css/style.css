@@ -517,6 +517,7 @@ body {
 .btn-accent { background: var(--accent); color: #fff; }
 .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
 .btn-danger { background: #e53935; color: #fff; }
+.btn-success { background: #2e7d32; color: #fff; }
 .btn-sm { padding: .35rem .8rem; font-size: .82rem; }
 .btn-full { width: 100%; }
 
