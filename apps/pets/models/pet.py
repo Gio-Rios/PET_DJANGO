@@ -15,11 +15,9 @@ class Pet(models.Model):
 
     SPECIES_CAT = 'gato'
     SPECIES_DOG = 'cachorro'
-    SPECIES_OTHER = 'outro'
     SPECIES_CHOICES = [
         (SPECIES_CAT, 'Gato'),
         (SPECIES_DOG, 'Cachorro'),
-        (SPECIES_OTHER, 'Outro'),
     ]
 
     SIZE_SMALL = 'pequeno'
@@ -39,11 +37,7 @@ class Pet(models.Model):
     ]
 
     name = models.CharField('Nome', max_length=100)
-    species = models.CharField('Espécie', max_length=20, choices=SPECIES_CHOICES, default=SPECIES_OTHER)
-    species_other = models.CharField(
-        'Espécie (outro)', max_length=50, blank=True,
-        help_text='Preenchido quando a categoria é "Outro" (ex: Coelho, Ave).',
-    )
+    species = models.CharField('Espécie', max_length=20, choices=SPECIES_CHOICES, default=SPECIES_DOG)
     size = models.CharField('Porte', max_length=20, choices=SIZE_CHOICES, default=SIZE_MEDIUM)
     sex = models.CharField('Sexo', max_length=10, choices=SEX_CHOICES, default=SEX_MALE)
     age = models.CharField('Idade', max_length=50)        # ex: "3 anos"
@@ -90,12 +84,6 @@ class Pet(models.Model):
 
     def __str__(self) -> str:
         return f'{self.name} (dono: {self.owner.name})'
-
-    def get_species_label(self) -> str:
-        """Nome de exibição da categoria: texto livre quando for 'Outro'."""
-        if self.species == self.SPECIES_OTHER and self.species_other:
-            return self.species_other
-        return self.get_species_display()
 
 
 class PetImage(models.Model):

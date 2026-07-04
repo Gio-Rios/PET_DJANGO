@@ -202,3 +202,19 @@ class DenyAdoptionView(APIView):
         except ValueError as exc:
             return Response({'message': str(exc)}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
         return Response(result)
+
+
+class CancelVisitView(APIView):
+    """PATCH /api/pets/<id>/cancel-visit/ — Cancela a visita agendada (pelo adotante)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        service = PetService()
+        try:
+            result = service.cancel_visit(pk, request.user)
+        except LookupError as exc:
+            return Response({'message': str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except PermissionError as exc:
+            return Response({'message': str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        return Response(result)

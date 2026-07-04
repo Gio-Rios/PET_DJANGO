@@ -3,6 +3,7 @@ from django.urls import path
 
 from apps.pets.views.pet_views import (
     AdoptedPetsView,
+    CancelVisitView,
     ConcludeAdoptionView,
     DenyAdoptionView,
     GivenAwayPetsView,
@@ -23,4 +24,5 @@ urlpatterns = [
     path('<int:pk>/schedule/', ScheduleVisitView.as_view(), name='pet-schedule'),
     path('<int:pk>/conclude/', ConcludeAdoptionView.as_view(), name='pet-conclude'),
     path('<int:pk>/deny/', DenyAdoptionView.as_view(), name='pet-deny'),
+    path('<int:pk>/cancel-visit/', CancelVisitView.as_view(), name='pet-cancel-visit'),
 ]

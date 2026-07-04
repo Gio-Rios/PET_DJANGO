@@ -40,13 +40,9 @@ class PetCreationValidationStrategy(ValidationStrategy):
     }
 
     def validate(self, data: dict) -> tuple[bool, str]:
-        from apps.pets.models import Pet
-
         for field, message in self._REQUIRED.items():
             if not data.get(field, '').strip():
                 return False, message
-        if data['species'] == Pet.SPECIES_OTHER and not data.get('species_other', '').strip():
-            return False, 'Informe a espécie quando escolher "Outro"!'
         return True, ''
 
 

@@ -142,3 +142,21 @@ class AdoptionFlowTests(APITestCase):
         url = reverse('pet-conclude', kwargs={'pk': self.pet.pk})
         response = self.client.patch(url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_cancel_visit_success(self):
+        """Adotante pode cancelar a visita agendada, liberando o pet."""
+        self.client.force_authenticate(user=self.visitor)
+        self.client.patch(reverse('pet-schedule', kwargs={'pk': self.pet.pk}))
+
+        url = reverse('pet-cancel-visit', kwargs={'pk': self.pet.pk})
+        response = self.client.patch(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.pet.refresh_from_db()
+        self.assertIsNone(self.pet.adopter)
+
+    def test_cannot_cancel_visit_without_scheduling(self):
+        """Usuário sem visita agendada não pode cancelar."""
+        self.client.force_authenticate(user=self.visitor)
+        url = reverse('pet-cancel-visit', kwargs={'pk': self.pet.pk})
+        response = self.client.patch(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

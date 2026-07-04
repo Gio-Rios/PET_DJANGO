@@ -16,8 +16,7 @@ class PetRepository:
     def get_all(species: str | None = None, size: str | None = None):
         """Retorna os pets disponíveis para adoção (usado na listagem pública).
 
-        species e size filtram por categoria/porte quando informados.
-        species='outro' agrupa toda categoria "diversos" (não gato/cachorro).
+        species e size filtram por espécie/porte quando informados.
         """
         queryset = (
             Pet.objects

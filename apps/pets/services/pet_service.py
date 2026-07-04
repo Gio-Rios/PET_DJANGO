@@ -47,7 +47,6 @@ class PetService:
             owner=owner,
             name=data['name'],
             species=data['species'],
-            species_other=data.get('species_other', ''),
             size=data['size'],
             sex=data['sex'],
             age=data['age'],
@@ -73,7 +72,6 @@ class PetService:
 
         pet.name = data['name']
         pet.species = data['species']
-        pet.species_other = data.get('species_other', '')
         pet.size = data['size']
         pet.sex = data['sex']
         pet.age = data['age']
@@ -194,6 +192,30 @@ class PetService:
 
         app_config.log_info(f'Adoção negada: pet={pet_id}')
         return {'message': 'Solicitação de adoção negada. O pet continua disponível para adoção.'}
+
+    def cancel_visit(self, pet_id: int, requesting_user) -> dict:
+        """Cancela a visita agendada. Somente o adotante agendado pode cancelar.
+
+        Remove o agendamento e mantém o pet disponível, notificando o dono
+        de que o adotante desistiu da visita.
+        """
+        pet = self.repo.get_by_id(pet_id)
+        if not pet:
+            raise LookupError('Pet não encontrado!')
+        if pet.adopter_id != requesting_user.pk:
+            raise PermissionError('Você não tem uma visita agendada para este Pet!')
+
+        pet.adopter = None
+        self.repo.save(pet)
+
+        self.notifications.notify(
+            pet.owner,
+            f'{requesting_user.name} cancelou a visita para adotar {pet.name}.',
+            pet=pet,
+        )
+
+        app_config.log_info(f'Visita cancelada: pet={pet_id}, adotante={requesting_user.email}')
+        return {'message': 'Visita cancelada com sucesso.'}
 
     # --- Auxiliares privados ---
 

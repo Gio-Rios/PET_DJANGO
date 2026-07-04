@@ -17,9 +17,7 @@
         <select id="species" required>
           <option value="cachorro">Cachorro</option>
           <option value="gato">Gato</option>
-          <option value="outro">Outro</option>
         </select>
-        <input type="text" id="species-other" placeholder="Qual espécie? Ex: Coelho" style="display:none;margin-top:.5rem">
       </div>
       <div class="form-group">
         <label>Porte</label>
@@ -76,10 +74,6 @@ if (!getToken()) window.location.href = '/users/login/';
 
 const petImages = createPetImageManager('pet-images-grid', 4);
 
-document.getElementById('species').addEventListener('change', e => {
-  document.getElementById('species-other').style.display = e.target.value === 'outro' ? 'block' : 'none';
-});
-
 document.getElementById('pet-form').addEventListener('submit', async e => {
   e.preventDefault();
 
@@ -91,7 +85,6 @@ document.getElementById('pet-form').addEventListener('submit', async e => {
   const fd = new FormData();
   fd.append('name', document.getElementById('name').value);
   fd.append('species', document.getElementById('species').value);
-  fd.append('species_other', document.getElementById('species-other').value);
   fd.append('size', document.getElementById('size').value);
   fd.append('sex', document.getElementById('sex').value);
   fd.append('age', `${document.getElementById('age-value').value} ${document.getElementById('age-unit').value}`);

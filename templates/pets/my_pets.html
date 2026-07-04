@@ -33,9 +33,7 @@
         <select id="edit-species" required>
           <option value="cachorro">Cachorro</option>
           <option value="gato">Gato</option>
-          <option value="outro">Outro</option>
         </select>
-        <input type="text" id="edit-species-other" placeholder="Qual espécie? Ex: Coelho" style="display:none;margin-top:.5rem">
       </div>
       <div class="form-group">
         <label>Porte</label>
@@ -92,11 +90,7 @@ if (!getToken()) window.location.href = '/users/login/';
 
 const editPetImages = createPetImageManager('edit-pet-images-grid', 4);
 
-document.getElementById('edit-species').addEventListener('change', e => {
-  document.getElementById('edit-species-other').style.display = e.target.value === 'outro' ? 'block' : 'none';
-});
-
-function petCard(pet, showConclude = false, hideAdopterInfo = false, adoptedBadgeText = 'Adotado', showOwnerContact = false) {
+function petCard(pet, showConclude = false, hideAdopterInfo = false, adoptedBadgeText = 'Adotado', showOwnerContact = false, showCancelVisit = false) {
   const images = pet.images.length ? pet.images.map(i => i.image) : ['https://via.placeholder.com/260x200?text=Sem+foto'];
   const imgNav = images.length > 1 ? `
         <button type="button" class="pet-card-img-nav pet-card-img-prev" data-dir="-1" aria-label="Foto anterior">&#10094;</button>
@@ -126,6 +120,10 @@ function petCard(pet, showConclude = false, hideAdopterInfo = false, adoptedBadg
     ? `<button class="btn btn-danger btn-sm" onclick="denyAdoption(${pet.id})">Negar adoção</button>`
     : '';
 
+  const cancelVisitBtn = showCancelVisit && pet.available
+    ? `<button class="btn btn-danger btn-sm" onclick="cancelVisit(${pet.id})">Cancelar visita</button>`
+    : '';
+
   return `
     <div class="pet-card">
       <div class="pet-card-img-wrap" data-images='${JSON.stringify(images)}' data-idx="0">
@@ -144,6 +142,7 @@ function petCard(pet, showConclude = false, hideAdopterInfo = false, adoptedBadg
         ${showConclude ? `<button class="btn btn-danger btn-sm" onclick="removePet(${pet.id})">Remover</button>` : ''}
         ${concludeBtn}
         ${denyBtn}
+        ${cancelVisitBtn}
       </div>
     </div>`;
 }
@@ -162,7 +161,7 @@ async function loadMyAdoptions() {
   const data = await res.json();
   const grid = document.getElementById('my-adoptions-grid');
   grid.innerHTML = data.pets.length
-    ? data.pets.map(p => petCard(p, false, false, 'Adotado', true)).join('')
+    ? data.pets.map(p => petCard(p, false, false, 'Adotado', true, true)).join('')
     : '<div class="empty-state" style="grid-column:1/-1"><p>Nenhuma adoção agendada ainda.</p></div>';
 }
 
@@ -208,6 +207,14 @@ async function denyAdoption(id) {
   if (res.ok) loadMyPets();
 }
 
+async function cancelVisit(id) {
+  if (!confirm('Cancelar a visita agendada para este pet?')) return;
+  const res = await apiFetch(`/pets/${id}/cancel-visit/`, { method: 'PATCH' });
+  const data = await res.json();
+  showAlert('#msg', data.message, res.ok ? 'success' : 'error');
+  if (res.ok) loadMyAdoptions();
+}
+
 function parseValueUnit(str, units, fallbackUnit) {
   const m = String(str || '').trim().match(/^([\d.,]+)\s*(.*)$/);
   if (!m) return { value: '', unit: fallbackUnit };
@@ -221,8 +228,6 @@ function openEdit(pet) {
   document.getElementById('edit-name').value = pet.name;
 
   document.getElementById('edit-species').value = pet.species;
-  document.getElementById('edit-species-other').value = pet.species_other || '';
-  document.getElementById('edit-species-other').style.display = pet.species === 'outro' ? 'block' : 'none';
   document.getElementById('edit-size').value = pet.size;
   document.getElementById('edit-sex').value = pet.sex;
 
@@ -251,7 +256,6 @@ document.getElementById('edit-form').addEventListener('submit', async e => {
   const fd = new FormData();
   fd.append('name', document.getElementById('edit-name').value);
   fd.append('species', document.getElementById('edit-species').value);
-  fd.append('species_other', document.getElementById('edit-species-other').value);
   fd.append('size', document.getElementById('edit-size').value);
   fd.append('sex', document.getElementById('edit-sex').value);
   fd.append('age', `${document.getElementById('edit-age-value').value} ${document.getElementById('edit-age-unit').value}`);
