@@ -10,9 +10,13 @@
 <body>
 
 <nav class="navbar">
-  <a href="/" class="logo">Get a <span>Pet</span></a>
+  <a href="/" class="logo">
+    <span class="logo-badge"><img src="{% static 'img/logo.png' %}" alt="Get a Pet" class="logo-img"></span>
+    Get a <span>Pet</span>
+  </a>
   <div class="nav-links" id="nav-links">
     <a href="/">Início</a>
+    <a href="/sobre/">Quem Somos</a>
     <!-- Links dinâmicos injetados pelo JS conforme autenticação -->
     <span id="nav-auth"></span>
   </div>

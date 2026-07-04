@@ -37,8 +37,20 @@ body {
 }
 
 .navbar a { color: #fff; text-decoration: none; font-weight: 600; transition: color .2s; }
-.navbar .logo { font-size: 1.4rem; letter-spacing: 1px; }
+.navbar .logo { font-size: 1.4rem; letter-spacing: 1px; display: flex; align-items: center; gap: .6rem; }
 .navbar .logo span { color: var(--accent); }
+.logo-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  background: #fff;
+  border-radius: 10px;
+  padding: 5px;
+  flex-shrink: 0;
+}
+.logo-img { width: 100%; height: 100%; object-fit: contain; display: block; }
 
 .nav-links { display: flex; gap: 2rem; align-items: center; }
 .nav-links a:hover { color: var(--accent); }
@@ -544,6 +556,68 @@ body {
   margin-bottom: 1rem;
   border-bottom: 2px solid var(--border);
   padding-bottom: .5rem;
+}
+
+/* ===== Página "Quem Somos" ===== */
+.about-section {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.8rem 2rem;
+  margin-bottom: 1.5rem;
+}
+.about-section h2 {
+  color: var(--primary);
+  font-size: 1.3rem;
+  margin-bottom: .9rem;
+}
+.about-section p { color: var(--text); line-height: 1.7; margin-bottom: .9rem; }
+.about-section p:last-child { margin-bottom: 0; }
+
+.about-list { list-style: none; margin: 0 0 .9rem; }
+.about-list li {
+  position: relative;
+  padding-left: 1.6rem;
+  margin-bottom: .6rem;
+  line-height: 1.6;
+  color: var(--text);
+}
+.about-list li::before {
+  content: '🐾';
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: .85rem;
+}
+.about-list li:last-child { margin-bottom: 0; }
+
+.about-highlight {
+  background: #eff6ff;
+  border-left: 4px solid var(--primary);
+  border-radius: 6px;
+  padding: .9rem 1.2rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  margin: 1rem 0;
+}
+
+.legal-callout {
+  background: #fffbeb;
+  border-left: 4px solid var(--accent);
+  border-radius: 6px;
+  padding: 1rem 1.2rem;
+  margin-top: 1rem;
+}
+.legal-callout p { margin-bottom: .7rem; }
+.legal-callout p:last-child { margin-bottom: 0; }
+.legal-callout strong { color: var(--accent-dark); }
+
+.about-tagline {
+  text-align: center;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--primary);
+  padding: 1rem 0 .5rem;
 }
 
 /* ===== Empty state ===== */
