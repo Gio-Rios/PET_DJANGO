@@ -11,6 +11,26 @@
 <div class="container">
   <h2 class="section-title">Pets disponíveis para adoção</h2>
   <div class="alert" id="msg"></div>
+  <div class="filters-bar" style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.2rem">
+    <div class="form-group" style="margin:0">
+      <label>Espécie</label>
+      <select id="filter-species">
+        <option value="">Todas</option>
+        <option value="cachorro">Cachorro</option>
+        <option value="gato">Gato</option>
+        <option value="outro">Diversos</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin:0">
+      <label>Porte</label>
+      <select id="filter-size">
+        <option value="">Todos</option>
+        <option value="pequeno">Pequeno</option>
+        <option value="medio">Médio</option>
+        <option value="grande">Grande</option>
+      </select>
+    </div>
+  </div>
   <div class="pets-grid" id="pets-grid">
     <p>Carregando...</p>
   </div>
@@ -34,60 +54,77 @@ document.addEventListener('DOMContentLoaded', async () => {
     wrap.querySelectorAll('.pet-card-img-dot').forEach((dot, i) => dot.classList.toggle('active', i === idx));
   });
 
-  const res = await apiFetch('/pets/');
-  const data = await res.json();
+  async function loadPets() {
+    grid.innerHTML = '<p>Carregando...</p>';
 
-  if (!data.pets || data.pets.length === 0) {
-    grid.innerHTML = `
-      <div class="empty-state" style="grid-column:1/-1">
-        <p>Nenhum pet disponível no momento. Seja o primeiro a cadastrar!</p>
-        <a href="/pets/create/" class="btn btn-primary" style="margin-top:1rem">Cadastrar Pet</a>
-      </div>`;
-    return;
-  }
+    const params = new URLSearchParams();
+    const species = document.getElementById('filter-species').value;
+    const size = document.getElementById('filter-size').value;
+    if (species) params.set('species', species);
+    if (size) params.set('size', size);
+    const query = params.toString();
 
-  const currentUser = getUser();
+    const res = await apiFetch(`/pets/${query ? `?${query}` : ''}`);
+    const data = await res.json();
 
-  grid.innerHTML = data.pets.map(pet => {
-    const images = pet.images.length ? pet.images.map(i => i.image) : ['https://via.placeholder.com/260x200?text=Sem+foto'];
-    const badge = pet.available
-      ? '<span class="badge badge-available">Disponível</span>'
-      : '<span class="badge badge-unavailable">Adotado</span>';
-
-    let actionBtn = '';
-    if (pet.available && currentUser && currentUser.id !== pet.owner) {
-      actionBtn = `<button class="btn btn-accent btn-sm" onclick="schedule(${pet.id})">Agendar visita</button>`;
+    if (!data.pets || data.pets.length === 0) {
+      grid.innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1">
+          <p>Nenhum pet encontrado com esses filtros.</p>
+          <a href="/pets/create/" class="btn btn-primary" style="margin-top:1rem">Cadastrar Pet</a>
+        </div>`;
+      return;
     }
 
-    const imgNav = images.length > 1 ? `
-          <button type="button" class="pet-card-img-nav pet-card-img-prev" data-dir="-1" aria-label="Foto anterior">&#10094;</button>
-          <button type="button" class="pet-card-img-nav pet-card-img-next" data-dir="1" aria-label="Próxima foto">&#10095;</button>
-          <div class="pet-card-img-dots">
-            ${images.map((_, i) => `<span class="pet-card-img-dot ${i === 0 ? 'active' : ''}"></span>`).join('')}
-          </div>` : '';
+    const currentUser = getUser();
 
-    return `
-      <div class="pet-card">
-        <div class="pet-card-img-wrap" data-images='${JSON.stringify(images)}' data-idx="0">
-          <img src="${images[0]}" alt="${pet.name}">
-          ${imgNav}
-        </div>
-        <div class="pet-card-body">
-          ${badge}
-          <h3>${pet.name}</h3>
-          <div class="pet-info">
-            Idade: ${pet.age}<br>
-            Peso: ${pet.weight}<br>
-            Cor: ${pet.color}
+    grid.innerHTML = data.pets.map(pet => {
+      const images = pet.images.length ? pet.images.map(i => i.image) : ['https://via.placeholder.com/260x200?text=Sem+foto'];
+      const badge = pet.available
+        ? '<span class="badge badge-available">Disponível</span>'
+        : '<span class="badge badge-unavailable">Adotado</span>';
+
+      let actionBtn = '';
+      if (pet.available && currentUser && currentUser.id !== pet.owner) {
+        actionBtn = `<button class="btn btn-accent btn-sm" onclick="schedule(${pet.id})">Agendar visita</button>`;
+      }
+
+      const imgNav = images.length > 1 ? `
+            <button type="button" class="pet-card-img-nav pet-card-img-prev" data-dir="-1" aria-label="Foto anterior">&#10094;</button>
+            <button type="button" class="pet-card-img-nav pet-card-img-next" data-dir="1" aria-label="Próxima foto">&#10095;</button>
+            <div class="pet-card-img-dots">
+              ${images.map((_, i) => `<span class="pet-card-img-dot ${i === 0 ? 'active' : ''}"></span>`).join('')}
+            </div>` : '';
+
+      return `
+        <div class="pet-card">
+          <div class="pet-card-img-wrap" data-images='${JSON.stringify(images)}' data-idx="0">
+            <img src="${images[0]}" alt="${pet.name}">
+            ${imgNav}
           </div>
-          <div class="owner-info">Dono: ${pet.owner_name}</div>
-        </div>
-        <div class="actions">
-          <a href="/pets/${pet.id}/" class="btn btn-outline btn-sm">Ver detalhes</a>
-          ${actionBtn}
-        </div>
-      </div>`;
-  }).join('');
+          <div class="pet-card-body">
+            ${badge}
+            <h3>${pet.name}</h3>
+            <div class="pet-info">
+              ${pet.species_label} · Porte: ${pet.size_label} · ${pet.sex_label}<br>
+              Idade: ${pet.age}<br>
+              Peso: ${pet.weight}<br>
+              Cor: ${pet.color}
+            </div>
+            <div class="owner-info">Dono: ${pet.owner_name}</div>
+          </div>
+          <div class="actions">
+            <a href="/pets/${pet.id}/" class="btn btn-outline btn-sm">Ver detalhes</a>
+            ${actionBtn}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  document.getElementById('filter-species').addEventListener('change', loadPets);
+  document.getElementById('filter-size').addEventListener('change', loadPets);
+
+  await loadPets();
 });
 
 async function schedule(petId) {

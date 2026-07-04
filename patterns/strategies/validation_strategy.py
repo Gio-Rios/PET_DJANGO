@@ -31,15 +31,22 @@ class PetCreationValidationStrategy(ValidationStrategy):
 
     _REQUIRED = {
         'name': 'O nome é obrigatório!',
+        'species': 'A espécie é obrigatória!',
+        'size': 'O porte é obrigatório!',
+        'sex': 'O sexo é obrigatório!',
         'age': 'A idade é obrigatória!',
         'weight': 'O peso é obrigatório!',
         'color': 'A cor é obrigatória!',
     }
 
     def validate(self, data: dict) -> tuple[bool, str]:
+        from apps.pets.models import Pet
+
         for field, message in self._REQUIRED.items():
             if not data.get(field, '').strip():
                 return False, message
+        if data['species'] == Pet.SPECIES_OTHER and not data.get('species_other', '').strip():
+            return False, 'Informe a espécie quando escolher "Outro"!'
         return True, ''
 
 

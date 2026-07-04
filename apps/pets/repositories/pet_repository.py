@@ -13,15 +13,24 @@ class PetRepository:
     """Repositório de acesso a dados para Pet e PetImage."""
 
     @staticmethod
-    def get_all():
-        """Retorna os pets disponíveis para adoção (usado na listagem pública)."""
-        return (
+    def get_all(species: str | None = None, size: str | None = None):
+        """Retorna os pets disponíveis para adoção (usado na listagem pública).
+
+        species e size filtram por categoria/porte quando informados.
+        species='outro' agrupa toda categoria "diversos" (não gato/cachorro).
+        """
+        queryset = (
             Pet.objects
             .filter(available=True)
             .select_related('owner', 'adopter')
             .prefetch_related('images')
             .order_by('-created_at')
         )
+        if species:
+            queryset = queryset.filter(species=species)
+        if size:
+            queryset = queryset.filter(size=size)
+        return queryset
 
     @staticmethod
     def get_by_id(pet_id: int) -> Pet | None:

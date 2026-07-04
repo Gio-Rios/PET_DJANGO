@@ -35,11 +35,16 @@ class PetSerializer(serializers.ModelSerializer):
     owner_email = serializers.CharField(source='owner.email', read_only=True)
     adopter_name = serializers.SerializerMethodField()
     adopter_image = serializers.SerializerMethodField()
+    species_label = serializers.CharField(source='get_species_label', read_only=True)
+    size_label = serializers.CharField(source='get_size_display', read_only=True)
+    sex_label = serializers.CharField(source='get_sex_display', read_only=True)
 
     class Meta:
         model = Pet
         fields = [
-            'id', 'name', 'age', 'weight', 'color', 'available',
+            'id', 'name', 'species', 'species_other', 'species_label', 'size', 'size_label',
+            'sex', 'sex_label',
+            'age', 'weight', 'color', 'available',
             'owner', 'owner_name', 'owner_phone', 'owner_email',
             'adopter', 'adopter_name', 'adopter_image',
             'images', 'created_at', 'updated_at',
@@ -62,6 +67,10 @@ class PetCreateSerializer(serializers.Serializer):
     """Deserializa dados para criação/atualização de pet (sem ORM direto)."""
 
     name = serializers.CharField(max_length=100)
+    species = serializers.ChoiceField(choices=Pet.SPECIES_CHOICES)
+    species_other = serializers.CharField(max_length=50, required=False, allow_blank=True, default='')
+    size = serializers.ChoiceField(choices=Pet.SIZE_CHOICES)
+    sex = serializers.ChoiceField(choices=Pet.SEX_CHOICES)
     age = serializers.CharField(max_length=50)
     weight = serializers.CharField(max_length=50)
     color = serializers.CharField(max_length=50)

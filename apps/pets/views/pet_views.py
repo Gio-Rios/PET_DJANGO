@@ -32,7 +32,9 @@ class PetListCreateView(APIView):
         return [IsAuthenticated()]
 
     def get(self, request):
-        pets = PetRepository.get_all()
+        species = request.query_params.get('species') or None
+        size = request.query_params.get('size') or None
+        pets = PetRepository.get_all(species=species, size=size)
         serializer = PetSerializer(pets, many=True, context={'request': request})
         return Response({'pets': serializer.data})
 

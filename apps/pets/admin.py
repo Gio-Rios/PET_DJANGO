@@ -10,8 +10,8 @@ class PetImageInline(admin.TabularInline):
 
 @admin.register(Pet)
 class PetAdmin(admin.ModelAdmin):
-    list_display = ('name', 'owner', 'available', 'adopter', 'created_at')
-    list_filter = ('available',)
+    list_display = ('name', 'species', 'size', 'sex', 'owner', 'available', 'adopter', 'created_at')
+    list_filter = ('available', 'species', 'size', 'sex')
     search_fields = ('name', 'owner__name', 'owner__email')
     inlines = [PetImageInline]
     readonly_fields = ('created_at', 'updated_at')

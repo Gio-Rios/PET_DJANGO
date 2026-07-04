@@ -29,6 +29,30 @@
       <input type="hidden" id="edit-id">
       <div class="form-group"><label>Nome</label><input type="text" id="edit-name" required></div>
       <div class="form-group">
+        <label>Espécie</label>
+        <select id="edit-species" required>
+          <option value="cachorro">Cachorro</option>
+          <option value="gato">Gato</option>
+          <option value="outro">Outro</option>
+        </select>
+        <input type="text" id="edit-species-other" placeholder="Qual espécie? Ex: Coelho" style="display:none;margin-top:.5rem">
+      </div>
+      <div class="form-group">
+        <label>Porte</label>
+        <select id="edit-size" required>
+          <option value="pequeno">Pequeno</option>
+          <option value="medio">Médio</option>
+          <option value="grande">Grande</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Sexo</label>
+        <select id="edit-sex" required>
+          <option value="macho">Macho</option>
+          <option value="femea">Fêmea</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label>Idade</label>
         <div class="input-group">
           <input type="number" id="edit-age-value" min="0" step="1" required>
@@ -68,7 +92,11 @@ if (!getToken()) window.location.href = '/users/login/';
 
 const editPetImages = createPetImageManager('edit-pet-images-grid', 4);
 
-function petCard(pet, showConclude = false, hideAdopterInfo = false, adoptedBadgeText = 'Adotado') {
+document.getElementById('edit-species').addEventListener('change', e => {
+  document.getElementById('edit-species-other').style.display = e.target.value === 'outro' ? 'block' : 'none';
+});
+
+function petCard(pet, showConclude = false, hideAdopterInfo = false, adoptedBadgeText = 'Adotado', showOwnerContact = false) {
   const images = pet.images.length ? pet.images.map(i => i.image) : ['https://via.placeholder.com/260x200?text=Sem+foto'];
   const imgNav = images.length > 1 ? `
         <button type="button" class="pet-card-img-nav pet-card-img-prev" data-dir="-1" aria-label="Foto anterior">&#10094;</button>
@@ -84,6 +112,10 @@ function petCard(pet, showConclude = false, hideAdopterInfo = false, adoptedBadg
   const adopterLabel = pet.available ? 'Adotante agendado' : 'Adotado por';
   const adopter = pet.adopter_name && !hideAdopterInfo
     ? `<div class="owner-info">${adopterLabel}: <strong>${pet.adopter_name}</strong></div>`
+    : '';
+
+  const ownerContact = showOwnerContact
+    ? `<div class="owner-info">Dono: <strong>${pet.owner_name}</strong> — Telefone: <strong>${pet.owner_phone}</strong></div>`
     : '';
 
   const hasPendingAdoption = showConclude && pet.available && pet.adopter;
@@ -103,7 +135,8 @@ function petCard(pet, showConclude = false, hideAdopterInfo = false, adoptedBadg
       <div class="pet-card-body">
         ${badge}
         <h3>${pet.name}</h3>
-        <div class="pet-info">Idade: ${pet.age} | Peso: ${pet.weight} | Cor: ${pet.color}</div>
+        <div class="pet-info">${pet.species_label} | Porte: ${pet.size_label} | Sexo: ${pet.sex_label} | Idade: ${pet.age} | Peso: ${pet.weight} | Cor: ${pet.color}</div>
+        ${ownerContact}
         ${adopter}
       </div>
       <div class="actions">
@@ -129,7 +162,7 @@ async function loadMyAdoptions() {
   const data = await res.json();
   const grid = document.getElementById('my-adoptions-grid');
   grid.innerHTML = data.pets.length
-    ? data.pets.map(p => petCard(p, false)).join('')
+    ? data.pets.map(p => petCard(p, false, false, 'Adotado', true)).join('')
     : '<div class="empty-state" style="grid-column:1/-1"><p>Nenhuma adoção agendada ainda.</p></div>';
 }
 
@@ -187,6 +220,12 @@ function openEdit(pet) {
   document.getElementById('edit-id').value = pet.id;
   document.getElementById('edit-name').value = pet.name;
 
+  document.getElementById('edit-species').value = pet.species;
+  document.getElementById('edit-species-other').value = pet.species_other || '';
+  document.getElementById('edit-species-other').style.display = pet.species === 'outro' ? 'block' : 'none';
+  document.getElementById('edit-size').value = pet.size;
+  document.getElementById('edit-sex').value = pet.sex;
+
   const age = parseValueUnit(pet.age, ['anos', 'meses'], 'anos');
   document.getElementById('edit-age-value').value = age.value;
   document.getElementById('edit-age-unit').value = age.unit;
@@ -211,6 +250,10 @@ document.getElementById('edit-form').addEventListener('submit', async e => {
   const id = document.getElementById('edit-id').value;
   const fd = new FormData();
   fd.append('name', document.getElementById('edit-name').value);
+  fd.append('species', document.getElementById('edit-species').value);
+  fd.append('species_other', document.getElementById('edit-species-other').value);
+  fd.append('size', document.getElementById('edit-size').value);
+  fd.append('sex', document.getElementById('edit-sex').value);
   fd.append('age', `${document.getElementById('edit-age-value').value} ${document.getElementById('edit-age-unit').value}`);
   fd.append('weight', `${document.getElementById('edit-weight-value').value} ${document.getElementById('edit-weight-unit').value}`);
   fd.append('color', document.getElementById('edit-color').value);

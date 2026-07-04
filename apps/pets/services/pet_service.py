@@ -46,6 +46,10 @@ class PetService:
         pet = self.factory.create(
             owner=owner,
             name=data['name'],
+            species=data['species'],
+            species_other=data.get('species_other', ''),
+            size=data['size'],
+            sex=data['sex'],
             age=data['age'],
             weight=data['weight'],
             color=data['color'],
@@ -68,6 +72,10 @@ class PetService:
             raise ValueError(message)
 
         pet.name = data['name']
+        pet.species = data['species']
+        pet.species_other = data.get('species_other', '')
+        pet.size = data['size']
+        pet.sex = data['sex']
         pet.age = data['age']
         pet.weight = data['weight']
         pet.color = data['color']

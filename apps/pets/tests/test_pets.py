@@ -42,6 +42,9 @@ class PetCRUDTests(APITestCase):
         url = reverse('pet-list-create')
         payload = {
             'name': 'Rex',
+            'species': 'cachorro',
+            'size': 'medio',
+            'sex': 'macho',
             'age': '3 anos',
             'weight': '10 kg',
             'color': 'Marrom',
@@ -64,7 +67,10 @@ class PetCRUDTests(APITestCase):
     def test_create_pet_without_image(self):
         """Pet sem imagem deve retornar 422."""
         url = reverse('pet-list-create')
-        payload = {'name': 'Rex', 'age': '3 anos', 'weight': '10 kg', 'color': 'Preto'}
+        payload = {
+            'name': 'Rex', 'species': 'cachorro', 'size': 'medio', 'sex': 'macho',
+            'age': '3 anos', 'weight': '10 kg', 'color': 'Preto',
+        }
         response = self.client.post(url, payload, format='multipart')
         self.assertEqual(response.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY)
 
@@ -120,6 +126,9 @@ class AdoptionFlowTests(APITestCase):
 
     def test_conclude_adoption_success(self):
         """Dono pode concluir adoção, marcando pet como indisponível."""
+        self.client.force_authenticate(user=self.visitor)
+        self.client.patch(reverse('pet-schedule', kwargs={'pk': self.pet.pk}))
+
         self.client.force_authenticate(user=self.owner)
         url = reverse('pet-conclude', kwargs={'pk': self.pet.pk})
         response = self.client.patch(url)

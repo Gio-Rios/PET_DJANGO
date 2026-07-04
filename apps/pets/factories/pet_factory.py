@@ -14,12 +14,20 @@ class PetFactory:
     """Fábrica para criação de instâncias de Pet (Factory GoF)."""
 
     @staticmethod
-    def create(*, owner, name: str, age: str, weight: str, color: str) -> Pet:
+    def create(
+        *, owner, name: str, age: str, weight: str, color: str,
+        species: str = Pet.SPECIES_OTHER, species_other: str = '', size: str = Pet.SIZE_MEDIUM,
+        sex: str = Pet.SEX_MALE,
+    ) -> Pet:
         """Cria e persiste um Pet com available=True por padrão."""
         pet = Pet(
             owner=owner,
             original_owner=owner,
             name=name,
+            species=species,
+            species_other=species_other,
+            size=size,
+            sex=sex,
             age=age,
             weight=weight,
             color=color,
@@ -29,12 +37,20 @@ class PetFactory:
         return pet
 
     @staticmethod
-    def build(*, owner, name: str, age: str, weight: str, color: str) -> Pet:
+    def build(
+        *, owner, name: str, age: str, weight: str, color: str,
+        species: str = Pet.SPECIES_OTHER, species_other: str = '', size: str = Pet.SIZE_MEDIUM,
+        sex: str = Pet.SEX_MALE,
+    ) -> Pet:
         """Constrói um Pet em memória sem persistir (útil em testes)."""
         return Pet(
             owner=owner,
             original_owner=owner,
             name=name,
+            species=species,
+            species_other=species_other,
+            size=size,
+            sex=sex,
             age=age,
             weight=weight,
             color=color,
