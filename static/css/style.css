@@ -2,16 +2,21 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --primary: #7b2d8b;
-  --primary-dark: #5a1f68;
-  --accent: #e91e8c;
-  --bg: #f8f4fb;
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --accent: #f59e0b;
+  --accent-dark: #d97706;
+  --success: #22c55e;
+  --success-dark: #16a34a;
+  --danger: #ef4444;
+  --dark: #1f2937;
+  --bg: #ffffff;
   --card-bg: #ffffff;
-  --text: #333;
-  --text-light: #777;
-  --border: #e0d6e8;
+  --text: #1f2937;
+  --text-light: #6b7280;
+  --border: #e5e7eb;
   --radius: 10px;
-  --shadow: 0 2px 12px rgba(123,45,139,.12);
+  --shadow: 0 2px 12px rgba(31,41,55,.1);
 }
 
 body {
@@ -56,7 +61,7 @@ body {
   font-size: .9rem;
 }
 #nav-auth a.nav-btn { margin-left: 2.25rem; }
-.nav-btn:hover { background: #c0146e; color: #fff !important; }
+.nav-btn:hover { background: var(--accent-dark); color: #fff !important; }
 
 /* ===== Sino de notificações ===== */
 .notif-wrap { position: relative; margin-left: 1.5rem; display: inline-flex; }
@@ -135,7 +140,7 @@ body {
 }
 .notif-item:last-child { border-bottom: none; }
 .notif-item:hover { background: var(--bg); }
-.notif-item.unread { background: #fdf0f7; font-weight: 600; }
+.notif-item.unread { background: #eff6ff; font-weight: 600; }
 .notif-item .notif-time {
   display: block;
   font-size: .7rem;
@@ -176,7 +181,7 @@ body {
   overflow: hidden;
   transition: transform .2s, box-shadow .2s;
 }
-.pet-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(123,45,139,.18); }
+.pet-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(37,99,235,.18); }
 
 .pet-card img {
   width: 100%;
@@ -226,8 +231,8 @@ body {
   border-radius: 20px;
   margin-bottom: .6rem;
 }
-.badge-available { background: #e6f4ea; color: #2e7d32; }
-.badge-unavailable { background: #fce4ec; color: #c62828; }
+.badge-available { background: #dcfce7; color: var(--success-dark); }
+.badge-unavailable { background: #fef3c7; color: var(--accent-dark); }
 
 .pet-card .pet-info { font-size: .88rem; color: var(--text-light); line-height: 1.7; }
 .pet-card .owner-info { font-size: .82rem; color: var(--text-light); margin-top: .4rem; }
@@ -516,8 +521,8 @@ body {
 .btn-primary { background: var(--primary); color: #fff; }
 .btn-accent { background: var(--accent); color: #fff; }
 .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
-.btn-danger { background: #e53935; color: #fff; }
-.btn-success { background: #2e7d32; color: #fff; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-success { background: var(--success); color: #fff; }
 .btn-sm { padding: .35rem .8rem; font-size: .82rem; }
 .btn-full { width: 100%; }
 
@@ -529,8 +534,8 @@ body {
   font-size: .9rem;
   display: none;
 }
-.alert-error { background: #fce4ec; color: #b71c1c; border: 1px solid #f48fb1; }
-.alert-success { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
+.alert-error { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+.alert-success { background: #dcfce7; color: var(--success-dark); border: 1px solid #86efac; }
 
 /* ===== Seção de título ===== */
 .section-title {
