@@ -68,12 +68,34 @@ class MyPetsView(APIView):
 
 
 class MyAdoptionsView(APIView):
-    """GET /api/pets/myadoptions/ — Lista as adoções agendadas pelo usuário."""
+    """GET /api/pets/myadoptions/ — Lista as adoções agendadas (ainda não concluídas)."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         pets = PetRepository.get_by_adopter(request.user)
+        serializer = PetSerializer(pets, many=True, context={'request': request})
+        return Response({'pets': serializer.data})
+
+
+class AdoptedPetsView(APIView):
+    """GET /api/pets/adopted/ — Lista os pets que o usuário adotou de outra pessoa."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        pets = PetRepository.get_adopted_by(request.user)
+        serializer = PetSerializer(pets, many=True, context={'request': request})
+        return Response({'pets': serializer.data})
+
+
+class GivenAwayPetsView(APIView):
+    """GET /api/pets/given-away/ — Lista os pets cadastrados pelo usuário que foram adotados por outros."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        pets = PetRepository.get_given_away_by(request.user)
         serializer = PetSerializer(pets, many=True, context={'request': request})
         return Response({'pets': serializer.data})
 
@@ -157,4 +179,24 @@ class ConcludeAdoptionView(APIView):
             return Response({'message': str(exc)}, status=status.HTTP_404_NOT_FOUND)
         except PermissionError as exc:
             return Response({'message': str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except ValueError as exc:
+            return Response({'message': str(exc)}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+        return Response(result)
+
+
+class DenyAdoptionView(APIView):
+    """PATCH /api/pets/<id>/deny/ — Nega a solicitação de adoção agendada."""
+
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        service = PetService()
+        try:
+            result = service.deny_adoption(pk, request.user)
+        except LookupError as exc:
+            return Response({'message': str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except PermissionError as exc:
+            return Response({'message': str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except ValueError as exc:
+            return Response({'message': str(exc)}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
         return Response(result)

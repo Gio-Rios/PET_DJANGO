@@ -22,6 +22,18 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const grid = document.getElementById('pets-grid');
 
+  grid.addEventListener('click', e => {
+    const btn = e.target.closest('.pet-card-img-nav');
+    if (!btn) return;
+    const wrap = btn.closest('.pet-card-img-wrap');
+    const images = JSON.parse(wrap.dataset.images);
+    if (images.length < 2) return;
+    const idx = (Number(wrap.dataset.idx) + Number(btn.dataset.dir) + images.length) % images.length;
+    wrap.dataset.idx = idx;
+    wrap.querySelector('img').src = images[idx];
+    wrap.querySelectorAll('.pet-card-img-dot').forEach((dot, i) => dot.classList.toggle('active', i === idx));
+  });
+
   const res = await apiFetch('/pets/');
   const data = await res.json();
 
@@ -37,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const currentUser = getUser();
 
   grid.innerHTML = data.pets.map(pet => {
-    const img = pet.images[0]?.image || 'https://via.placeholder.com/260x200?text=Sem+foto';
+    const images = pet.images.length ? pet.images.map(i => i.image) : ['https://via.placeholder.com/260x200?text=Sem+foto'];
     const badge = pet.available
       ? '<span class="badge badge-available">Disponível</span>'
       : '<span class="badge badge-unavailable">Adotado</span>';
@@ -47,9 +59,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       actionBtn = `<button class="btn btn-accent btn-sm" onclick="schedule(${pet.id})">Agendar visita</button>`;
     }
 
+    const imgNav = images.length > 1 ? `
+          <button type="button" class="pet-card-img-nav pet-card-img-prev" data-dir="-1" aria-label="Foto anterior">&#10094;</button>
+          <button type="button" class="pet-card-img-nav pet-card-img-next" data-dir="1" aria-label="Próxima foto">&#10095;</button>
+          <div class="pet-card-img-dots">
+            ${images.map((_, i) => `<span class="pet-card-img-dot ${i === 0 ? 'active' : ''}"></span>`).join('')}
+          </div>` : '';
+
     return `
       <div class="pet-card">
-        <img src="${img}" alt="${pet.name}">
+        <div class="pet-card-img-wrap" data-images='${JSON.stringify(images)}' data-idx="0">
+          <img src="${images[0]}" alt="${pet.name}">
+          ${imgNav}
+        </div>
         <div class="pet-card-body">
           ${badge}
           <h3>${pet.name}</h3>

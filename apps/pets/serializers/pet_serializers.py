@@ -16,7 +16,7 @@ class PetImageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PetImage
-        fields = ['id', 'image']
+        fields = ['id', 'image', 'is_cover']
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)
@@ -65,4 +65,8 @@ class PetCreateSerializer(serializers.Serializer):
     age = serializers.CharField(max_length=50)
     weight = serializers.CharField(max_length=50)
     color = serializers.CharField(max_length=50)
-    available = serializers.BooleanField(required=False, default=True)
+    cover_index = serializers.IntegerField(required=False, default=0, min_value=0)
+    cover_existing_id = serializers.IntegerField(required=False, allow_null=True, default=None)
+    delete_image_ids = serializers.ListField(
+        child=serializers.IntegerField(), required=False, default=list,
+    )

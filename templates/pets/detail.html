@@ -12,6 +12,42 @@
 <script>
 const petId = window.location.pathname.split('/').filter(Boolean).pop();
 
+let carouselIndex = 0;
+let carouselTotal = 0;
+
+function carouselRender() {
+  const track = document.getElementById('pet-carousel-track');
+  if (!track) return;
+  track.style.transform = `translateX(-${carouselIndex * 100}%)`;
+  document.querySelectorAll('#pet-carousel-dots .pet-carousel-dot').forEach((dot, idx) => {
+    dot.classList.toggle('active', idx === carouselIndex);
+  });
+}
+
+function carouselMove(delta) {
+  if (carouselTotal < 2) return;
+  carouselIndex = (carouselIndex + delta + carouselTotal) % carouselTotal;
+  carouselRender();
+}
+
+function carouselGoTo(idx) {
+  carouselIndex = idx;
+  carouselRender();
+}
+
+function setupCarouselSwipe() {
+  const carousel = document.getElementById('pet-carousel');
+  if (!carousel) return;
+  let startX = 0, dragging = false;
+  carousel.addEventListener('pointerdown', e => { dragging = true; startX = e.clientX; });
+  carousel.addEventListener('pointerup', e => {
+    if (!dragging) return;
+    dragging = false;
+    const delta = e.clientX - startX;
+    if (Math.abs(delta) > 40) carouselMove(delta < 0 ? 1 : -1);
+  });
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   const res = await apiFetch(`/pets/${petId}/`);
   if (!res.ok) {
@@ -21,9 +57,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   const { pet } = await res.json();
   const user = getUser();
 
-  const images = pet.images.map(i =>
-    `<img src="${i.image}" alt="${pet.name}" style="width:100%;max-height:380px;object-fit:cover;border-radius:10px;margin-bottom:.8rem">`
-  ).join('');
+  carouselIndex = 0;
+  carouselTotal = pet.images.length;
+
+  const images = pet.images.length
+    ? `<div class="pet-carousel" id="pet-carousel">
+        <div class="pet-carousel-track" id="pet-carousel-track">
+          ${pet.images.map(i => `<div class="pet-carousel-slide"><img src="${i.image}" alt="${pet.name}"></div>`).join('')}
+        </div>
+        ${pet.images.length > 1 ? `
+          <button type="button" class="pet-carousel-arrow pet-carousel-prev" onclick="carouselMove(-1)" aria-label="Foto anterior">&#10094;</button>
+          <button type="button" class="pet-carousel-arrow pet-carousel-next" onclick="carouselMove(1)" aria-label="Próxima foto">&#10095;</button>
+          <div class="pet-carousel-dots" id="pet-carousel-dots">
+            ${pet.images.map((_, idx) => `<span class="pet-carousel-dot ${idx === 0 ? 'active' : ''}" onclick="carouselGoTo(${idx})"></span>`).join('')}
+          </div>` : ''}
+      </div>`
+    : `<div class="pet-carousel pet-carousel-empty">Sem foto disponível</div>`;
 
   const badge = pet.available
     ? '<span class="badge badge-available" style="font-size:1rem;padding:.3rem .9rem">Disponível</span>'
@@ -31,6 +80,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const adopter = pet.adopter_name
     ? `<p><strong>Adotante agendado:</strong> ${pet.adopter_name}</p>` : '';
+
+  const ownerLine = user
+    ? `<p><strong>Dono:</strong> ${pet.owner_name} — ${pet.owner_phone}</p>`
+    : `<p><strong>Dono:</strong> ${pet.owner_name}</p>
+       <div class="login-callout">
+         <p>Faça login para adotar</p>
+         <a href="/users/login/" class="btn btn-primary btn-sm">Entrar</a>
+       </div>`;
 
   let actions = '';
   if (user) {
@@ -49,13 +106,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       <p><strong>Idade:</strong> ${pet.age}</p>
       <p><strong>Peso:</strong> ${pet.weight}</p>
       <p><strong>Cor:</strong> ${pet.color}</p>
-      <p><strong>Dono:</strong> ${pet.owner_name} — ${pet.owner_phone}</p>
+      ${ownerLine}
       ${adopter}
       <div style="margin-top:1.2rem;display:flex;gap:.8rem">
         ${actions}
         <a href="/" class="btn btn-outline">Voltar</a>
       </div>
     </div>`;
+
+  setupCarouselSwipe();
 });
 
 async function schedule() {

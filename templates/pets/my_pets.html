@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="container">
-  <h2 class="section-title">Meus Pets</h2>
+  <h2 class="section-title">Meus Pets para Adoção</h2>
   <div class="alert" id="msg"></div>
   <div style="margin-bottom:1rem">
     <a href="/pets/create/" class="btn btn-primary">+ Cadastrar novo pet</a>
@@ -12,6 +12,12 @@
 
   <h2 class="section-title" style="margin-top:2.5rem">Minhas Adoções Agendadas</h2>
   <div class="pets-grid" id="my-adoptions-grid"><p>Carregando...</p></div>
+
+  <h2 class="section-title" style="margin-top:2.5rem">Meus Pets que Adotei</h2>
+  <div class="pets-grid" id="adopted-pets-grid"><p>Carregando...</p></div>
+
+  <h2 class="section-title" style="margin-top:2.5rem">Meus Pets Adotados</h2>
+  <div class="pets-grid" id="given-away-pets-grid"><p>Carregando...</p></div>
 </div>
 
 <!-- Modal de edição -->
@@ -22,10 +28,31 @@
     <form id="edit-form">
       <input type="hidden" id="edit-id">
       <div class="form-group"><label>Nome</label><input type="text" id="edit-name" required></div>
-      <div class="form-group"><label>Idade</label><input type="text" id="edit-age" required></div>
-      <div class="form-group"><label>Peso</label><input type="text" id="edit-weight" required></div>
+      <div class="form-group">
+        <label>Idade</label>
+        <div class="input-group">
+          <input type="number" id="edit-age-value" min="0" step="1" required>
+          <select id="edit-age-unit">
+            <option value="anos">Anos</option>
+            <option value="meses">Meses</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Peso</label>
+        <div class="input-group">
+          <input type="number" id="edit-weight-value" min="0" step="0.1" required>
+          <select id="edit-weight-unit">
+            <option value="kg">Kg</option>
+            <option value="g">Gramas</option>
+          </select>
+        </div>
+      </div>
       <div class="form-group"><label>Cor</label><input type="text" id="edit-color" required></div>
-      <div class="form-group"><label>Novas fotos (opcional)</label><input type="file" id="edit-images" accept="image/*" multiple></div>
+      <div class="form-group">
+        <label>Fotos do pet (até 4)</label>
+        <div class="pet-img-grid" id="edit-pet-images-grid"></div>
+      </div>
       <div style="display:flex;gap:.8rem">
         <button type="submit" class="btn btn-primary">Salvar</button>
         <button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button>
@@ -39,23 +66,40 @@
 <script>
 if (!getToken()) window.location.href = '/users/login/';
 
-function petCard(pet, showConclude = false) {
-  const img = pet.images[0]?.image || 'https://via.placeholder.com/260x200?text=Sem+foto';
+const editPetImages = createPetImageManager('edit-pet-images-grid', 4);
+
+function petCard(pet, showConclude = false, hideAdopterInfo = false, adoptedBadgeText = 'Adotado') {
+  const images = pet.images.length ? pet.images.map(i => i.image) : ['https://via.placeholder.com/260x200?text=Sem+foto'];
+  const imgNav = images.length > 1 ? `
+        <button type="button" class="pet-card-img-nav pet-card-img-prev" data-dir="-1" aria-label="Foto anterior">&#10094;</button>
+        <button type="button" class="pet-card-img-nav pet-card-img-next" data-dir="1" aria-label="Próxima foto">&#10095;</button>
+        <div class="pet-card-img-dots">
+          ${images.map((_, i) => `<span class="pet-card-img-dot ${i === 0 ? 'active' : ''}"></span>`).join('')}
+        </div>` : '';
+
   const badge = pet.available
     ? '<span class="badge badge-available">Disponível</span>'
-    : '<span class="badge badge-unavailable">Adotado</span>';
+    : `<span class="badge badge-unavailable">${adoptedBadgeText}</span>`;
 
-  const adopter = pet.adopter_name
-    ? `<div class="owner-info">Adotante agendado: <strong>${pet.adopter_name}</strong></div>`
+  const adopterLabel = pet.available ? 'Adotante agendado' : 'Adotado por';
+  const adopter = pet.adopter_name && !hideAdopterInfo
+    ? `<div class="owner-info">${adopterLabel}: <strong>${pet.adopter_name}</strong></div>`
     : '';
 
-  const concludeBtn = showConclude && pet.available && pet.adopter
-    ? `<button class="btn btn-accent btn-sm" onclick="conclude(${pet.id})">Concluir adoção</button>`
+  const hasPendingAdoption = showConclude && pet.available && pet.adopter;
+  const concludeBtn = hasPendingAdoption
+    ? `<button class="btn btn-success btn-sm" onclick="conclude(${pet.id})">Concluir adoção</button>`
+    : '';
+  const denyBtn = hasPendingAdoption
+    ? `<button class="btn btn-danger btn-sm" onclick="denyAdoption(${pet.id})">Negar adoção</button>`
     : '';
 
   return `
     <div class="pet-card">
-      <img src="${img}" alt="${pet.name}">
+      <div class="pet-card-img-wrap" data-images='${JSON.stringify(images)}' data-idx="0">
+        <img src="${images[0]}" alt="${pet.name}">
+        ${imgNav}
+      </div>
       <div class="pet-card-body">
         ${badge}
         <h3>${pet.name}</h3>
@@ -66,6 +110,7 @@ function petCard(pet, showConclude = false) {
         ${showConclude ? `<button class="btn btn-outline btn-sm" onclick="openEdit(${JSON.stringify(pet).replace(/"/g,'&quot;')})">Editar</button>` : ''}
         ${showConclude ? `<button class="btn btn-danger btn-sm" onclick="removePet(${pet.id})">Remover</button>` : ''}
         ${concludeBtn}
+        ${denyBtn}
       </div>
     </div>`;
 }
@@ -88,12 +133,30 @@ async function loadMyAdoptions() {
     : '<div class="empty-state" style="grid-column:1/-1"><p>Nenhuma adoção agendada ainda.</p></div>';
 }
 
+async function loadAdoptedPets() {
+  const res = await apiFetch('/pets/adopted/');
+  const data = await res.json();
+  const grid = document.getElementById('adopted-pets-grid');
+  grid.innerHTML = data.pets.length
+    ? data.pets.map(p => petCard(p, false, true, 'Adotei')).join('')
+    : '<div class="empty-state" style="grid-column:1/-1"><p>Você ainda não adotou nenhum pet.</p></div>';
+}
+
+async function loadGivenAwayPets() {
+  const res = await apiFetch('/pets/given-away/');
+  const data = await res.json();
+  const grid = document.getElementById('given-away-pets-grid');
+  grid.innerHTML = data.pets.length
+    ? data.pets.map(p => petCard(p, false, false)).join('')
+    : '<div class="empty-state" style="grid-column:1/-1"><p>Nenhum dos seus pets foi adotado ainda.</p></div>';
+}
+
 async function removePet(id) {
   if (!confirm('Tem certeza que deseja remover este pet?')) return;
   const res = await apiFetch(`/pets/${id}/`, { method: 'DELETE' });
   const data = await res.json();
   showAlert('#msg', data.message, res.ok ? 'success' : 'error');
-  if (res.ok) loadMyPets();
+  if (res.ok) { loadMyPets(); loadAdoptedPets(); loadGivenAwayPets(); }
 }
 
 async function conclude(id) {
@@ -101,15 +164,41 @@ async function conclude(id) {
   const res = await apiFetch(`/pets/${id}/conclude/`, { method: 'PATCH' });
   const data = await res.json();
   showAlert('#msg', data.message, res.ok ? 'success' : 'error');
+  if (res.ok) { loadMyPets(); loadAdoptedPets(); loadGivenAwayPets(); }
+}
+
+async function denyAdoption(id) {
+  if (!confirm('Negar esta solicitação de adoção? O pet continuará disponível para outros interessados.')) return;
+  const res = await apiFetch(`/pets/${id}/deny/`, { method: 'PATCH' });
+  const data = await res.json();
+  showAlert('#msg', data.message, res.ok ? 'success' : 'error');
   if (res.ok) loadMyPets();
+}
+
+function parseValueUnit(str, units, fallbackUnit) {
+  const m = String(str || '').trim().match(/^([\d.,]+)\s*(.*)$/);
+  if (!m) return { value: '', unit: fallbackUnit };
+  const rest = m[2].toLowerCase();
+  const unit = units.find(u => rest.startsWith(u)) || fallbackUnit;
+  return { value: m[1].replace(',', '.'), unit };
 }
 
 function openEdit(pet) {
   document.getElementById('edit-id').value = pet.id;
   document.getElementById('edit-name').value = pet.name;
-  document.getElementById('edit-age').value = pet.age;
-  document.getElementById('edit-weight').value = pet.weight;
+
+  const age = parseValueUnit(pet.age, ['anos', 'meses'], 'anos');
+  document.getElementById('edit-age-value').value = age.value;
+  document.getElementById('edit-age-unit').value = age.unit;
+
+  const weight = parseValueUnit(pet.weight, ['kg', 'g'], 'kg');
+  document.getElementById('edit-weight-value').value = weight.value;
+  document.getElementById('edit-weight-unit').value = weight.unit;
+
   document.getElementById('edit-color').value = pet.color;
+
+  editPetImages.loadExisting(pet.images);
+
   document.getElementById('edit-modal').style.display = 'block';
 }
 
@@ -122,10 +211,26 @@ document.getElementById('edit-form').addEventListener('submit', async e => {
   const id = document.getElementById('edit-id').value;
   const fd = new FormData();
   fd.append('name', document.getElementById('edit-name').value);
-  fd.append('age', document.getElementById('edit-age').value);
-  fd.append('weight', document.getElementById('edit-weight').value);
+  fd.append('age', `${document.getElementById('edit-age-value').value} ${document.getElementById('edit-age-unit').value}`);
+  fd.append('weight', `${document.getElementById('edit-weight-value').value} ${document.getElementById('edit-weight-unit').value}`);
   fd.append('color', document.getElementById('edit-color').value);
-  for (const f of document.getElementById('edit-images').files) fd.append('images', f);
+
+  if (editPetImages.count() === 0) {
+    showAlert('#edit-msg', 'O pet precisa ter ao menos uma foto.');
+    return;
+  }
+
+  editPetImages.getDeletedExistingIds().forEach(delId => fd.append('delete_image_ids', delId));
+
+  const newBlobs = editPetImages.getNewBlobs();
+  newBlobs.forEach((blob, idx) => fd.append('images', blob, `pet-${idx}.jpg`));
+
+  const coverExistingId = editPetImages.getCoverExistingId();
+  if (coverExistingId) {
+    fd.append('cover_existing_id', coverExistingId);
+  } else if (newBlobs.length) {
+    fd.append('cover_index', editPetImages.getCoverIndexAmongNew());
+  }
 
   const res = await apiFetch(`/pets/${id}/`, { method: 'PATCH', body: fd });
   const data = await res.json();
@@ -133,14 +238,30 @@ document.getElementById('edit-form').addEventListener('submit', async e => {
     closeModal();
     showAlert('#msg', data.message, 'success');
     loadMyPets();
+    loadAdoptedPets();
+    loadGivenAwayPets();
   } else {
     showAlert('#edit-msg', data.message || 'Erro ao atualizar.');
   }
 });
 
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.pet-card-img-nav');
+  if (!btn) return;
+  const wrap = btn.closest('.pet-card-img-wrap');
+  const images = JSON.parse(wrap.dataset.images);
+  if (images.length < 2) return;
+  const idx = (Number(wrap.dataset.idx) + Number(btn.dataset.dir) + images.length) % images.length;
+  wrap.dataset.idx = idx;
+  wrap.querySelector('img').src = images[idx];
+  wrap.querySelectorAll('.pet-card-img-dot').forEach((dot, i) => dot.classList.toggle('active', i === idx));
+});
+
 document.addEventListener('DOMContentLoaded', () => {
   loadMyPets();
   loadMyAdoptions();
+  loadAdoptedPets();
+  loadGivenAwayPets();
 });
 </script>
 {% endblock %}

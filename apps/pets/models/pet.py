@@ -19,12 +19,23 @@ class Pet(models.Model):
     color = models.CharField('Cor', max_length=50)
     available = models.BooleanField('Disponível para adoção', default=True)
 
-    # FK para o dono: ao deletar o dono, remove seus pets em cascata
+    # FK para o dono atual: ao deletar o dono, remove seus pets em cascata
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='owned_pets',
         verbose_name='Dono',
+    )
+
+    # FK para quem cadastrou o pet originalmente — não muda quando a posse
+    # é transferida ao adotante, permitindo o dono original ver seu histórico
+    original_owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='registered_pets',
+        verbose_name='Dono Original',
     )
 
     # FK para o adotante: ao deletar o adotante, limpa a referência (SET_NULL)
@@ -59,10 +70,12 @@ class PetImage(models.Model):
         verbose_name='Pet',
     )
     image = models.ImageField('Imagem', upload_to='pets/')
+    is_cover = models.BooleanField('Capa (miniatura)', default=False)
 
     class Meta:
         verbose_name = 'Imagem do Pet'
         verbose_name_plural = 'Imagens do Pet'
+        ordering = ['-is_cover', 'id']
 
     def __str__(self) -> str:
         return f'Imagem de {self.pet.name}'

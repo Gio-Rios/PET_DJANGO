@@ -14,19 +14,31 @@
       </div>
       <div class="form-group">
         <label>Idade</label>
-        <input type="text" id="age" placeholder="Ex: 3 anos" required>
+        <div class="input-group">
+          <input type="number" id="age-value" min="0" step="1" placeholder="Ex: 3" required>
+          <select id="age-unit">
+            <option value="anos">Anos</option>
+            <option value="meses">Meses</option>
+          </select>
+        </div>
       </div>
       <div class="form-group">
         <label>Peso</label>
-        <input type="text" id="weight" placeholder="Ex: 5 kg" required>
+        <div class="input-group">
+          <input type="number" id="weight-value" min="0" step="0.1" placeholder="Ex: 5" required>
+          <select id="weight-unit">
+            <option value="kg">Kg</option>
+            <option value="g">Gramas</option>
+          </select>
+        </div>
       </div>
       <div class="form-group">
         <label>Cor</label>
         <input type="text" id="color" placeholder="Ex: Marrom e branco" required>
       </div>
       <div class="form-group">
-        <label>Fotos (pode selecionar várias)</label>
-        <input type="file" id="images" accept="image/*" multiple required>
+        <label>Fotos do pet (até 4)</label>
+        <div class="pet-img-grid" id="pet-images-grid"></div>
       </div>
       <button type="submit" class="btn btn-primary btn-full">Cadastrar Pet</button>
     </form>
@@ -38,17 +50,23 @@
 <script>
 if (!getToken()) window.location.href = '/users/login/';
 
+const petImages = createPetImageManager('pet-images-grid', 4);
+
 document.getElementById('pet-form').addEventListener('submit', async e => {
   e.preventDefault();
 
+  if (petImages.count() === 0) {
+    showAlert('#msg', 'Adicione pelo menos uma foto do pet.');
+    return;
+  }
+
   const fd = new FormData();
   fd.append('name', document.getElementById('name').value);
-  fd.append('age', document.getElementById('age').value);
-  fd.append('weight', document.getElementById('weight').value);
+  fd.append('age', `${document.getElementById('age-value').value} ${document.getElementById('age-unit').value}`);
+  fd.append('weight', `${document.getElementById('weight-value').value} ${document.getElementById('weight-unit').value}`);
   fd.append('color', document.getElementById('color').value);
-
-  const files = document.getElementById('images').files;
-  for (const file of files) fd.append('images', file);
+  fd.append('cover_index', petImages.getCoverIndex());
+  petImages.getBlobs().forEach((blob, idx) => fd.append('images', blob, `pet-${idx}.jpg`));
 
   const res = await apiFetch('/pets/', { method: 'POST', body: fd });
   const data = await res.json();

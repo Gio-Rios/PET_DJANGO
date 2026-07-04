@@ -1,3 +1,4 @@
 from .user import CustomUser
+from .notification import Notification
 
-__all__ = ['CustomUser']
+__all__ = ['CustomUser', 'Notification']

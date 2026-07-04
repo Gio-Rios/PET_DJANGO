@@ -18,6 +18,28 @@
   </div>
 </nav>
 
+<!-- Editor de imagem: rotação, zoom e posicionamento antes do upload -->
+<div id="img-editor-overlay" class="img-editor-overlay" style="display:none">
+  <div class="img-editor-box">
+    <button type="button" class="img-editor-close" id="img-editor-close" aria-label="Fechar">&times;</button>
+    <div class="img-editor-viewport" id="img-editor-viewport">
+      <img id="img-editor-img" alt="" draggable="false">
+    </div>
+    <div class="img-editor-toolbar">
+      <button type="button" id="ie-rotate-left" title="Girar à esquerda">⟲</button>
+      <button type="button" id="ie-rotate-right" title="Girar à direita">⟳</button>
+      <button type="button" id="ie-zoom-out" title="Diminuir">−</button>
+      <button type="button" id="ie-zoom-in" title="Aumentar">+</button>
+      <button type="button" id="ie-center" title="Centralizar">⤾</button>
+    </div>
+    <p class="img-editor-hint">Arraste a foto para escolher a parte visível</p>
+    <div class="img-editor-actions">
+      <button type="button" class="btn btn-outline" id="ie-cancel">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="ie-apply">Aplicar</button>
+    </div>
+  </div>
+</div>
+
 {% block content %}{% endblock %}
 
 <footer>
@@ -76,7 +98,22 @@ function renderNav() {
     nav.innerHTML = `
       <a href="/pets/create/">Cadastrar Pet</a>
       <a href="/pets/mypets/">Meus Pets</a>
-      <a href="/users/profile/">Olá, ${user.name.split(' ')[0]}</a>
+      <a href="/users/profile/" class="nav-greeting">Olá, ${user.name.split(' ')[0]}</a>
+      <div class="notif-wrap" id="notif-wrap">
+        <button type="button" class="notif-bell" id="notif-bell" aria-label="Notificações">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+            <path d="M12 2a1 1 0 0 1 1 1v1.05A7 7 0 0 1 19 11v3.38l1.71 3.42A1 1 0 0 1 19.8 19H4.2a1 1 0 0 1-.9-1.45L5 14.38V11a7 7 0 0 1 6-6.95V3a1 1 0 0 1 1-1Zm0 19a2.5 2.5 0 0 1-2.45-2h4.9A2.5 2.5 0 0 1 12 21Z"/>
+          </svg>
+          <span class="notif-badge" id="notif-badge" style="display:none">0</span>
+        </button>
+        <div class="notif-dropdown" id="notif-dropdown" style="display:none">
+          <div class="notif-dropdown-header">
+            <strong>Notificações</strong>
+            <button type="button" id="notif-mark-all">Marcar todas como lidas</button>
+          </div>
+          <div class="notif-list" id="notif-list"><p class="notif-empty">Carregando...</p></div>
+        </div>
+      </div>
       <a href="#" class="nav-btn" id="btn-logout">Sair</a>
     `;
     document.getElementById('btn-logout').addEventListener('click', e => {
@@ -84,12 +121,351 @@ function renderNav() {
       clearSession();
       window.location.href = '/';
     });
+    startNotificationPolling();
   } else {
     nav.innerHTML = `
       <a href="/users/login/">Entrar</a>
       <a href="/users/register/" class="nav-btn">Cadastrar</a>
     `;
   }
+}
+
+/* ====================================================
+   Sino de notificações
+   ==================================================== */
+
+let _notifPollTimer = null;
+
+function timeAgo(dateStr) {
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'agora';
+  if (mins < 60) return `${mins} min atrás`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h atrás`;
+  const days = Math.floor(hours / 24);
+  return `${days}d atrás`;
+}
+
+async function fetchNotifications() {
+  const res = await apiFetch('/users/notifications/');
+  if (!res.ok) return null;
+  return res.json();
+}
+
+async function refreshNotifBadge() {
+  const badge = document.getElementById('notif-badge');
+  if (!badge) return;
+  const data = await fetchNotifications();
+  if (!data) return;
+  if (data.unread_count > 0) {
+    badge.textContent = data.unread_count > 9 ? '9+' : data.unread_count;
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function startNotificationPolling() {
+  refreshNotifBadge();
+  if (_notifPollTimer) clearInterval(_notifPollTimer);
+  _notifPollTimer = setInterval(refreshNotifBadge, 30000);
+}
+
+async function toggleNotifDropdown() {
+  const dropdown = document.getElementById('notif-dropdown');
+  if (!dropdown) return;
+
+  if (dropdown.style.display === 'block') {
+    dropdown.style.display = 'none';
+    return;
+  }
+
+  dropdown.style.display = 'block';
+  const list = document.getElementById('notif-list');
+  list.innerHTML = '<p class="notif-empty">Carregando...</p>';
+
+  const data = await fetchNotifications();
+  if (!data || !data.notifications.length) {
+    list.innerHTML = '<p class="notif-empty">Nenhuma notificação ainda.</p>';
+    return;
+  }
+
+  list.innerHTML = data.notifications.map(n => `
+    <button type="button" class="notif-item ${n.is_read ? '' : 'unread'}" data-id="${n.id}" data-pet-id="${n.pet_id ?? ''}">
+      ${n.message}
+      <span class="notif-time">${timeAgo(n.created_at)}</span>
+    </button>
+  `).join('');
+}
+
+document.addEventListener('click', async e => {
+  if (e.target.closest('#notif-bell')) {
+    toggleNotifDropdown();
+    return;
+  }
+
+  const item = e.target.closest('.notif-item');
+  if (item) {
+    const id = item.dataset.id;
+    item.classList.remove('unread');
+    await apiFetch(`/users/notifications/${id}/read/`, { method: 'PATCH' });
+    refreshNotifBadge();
+    if (item.dataset.petId) window.location.href = `/pets/${item.dataset.petId}/`;
+    return;
+  }
+
+  if (e.target.closest('#notif-mark-all')) {
+    document.querySelectorAll('.notif-item.unread').forEach(el => el.classList.remove('unread'));
+    await apiFetch('/users/notifications/read-all/', { method: 'PATCH' });
+    refreshNotifBadge();
+    return;
+  }
+
+  const wrap = document.getElementById('notif-wrap');
+  const dropdown = document.getElementById('notif-dropdown');
+  if (wrap && dropdown && dropdown.style.display === 'block' && !wrap.contains(e.target)) {
+    dropdown.style.display = 'none';
+  }
+});
+
+/* ====================================================
+   Editor de imagem (rotação, zoom, arraste) e gerenciador
+   de fotos do pet (até 4, com escolha da foto principal)
+   ==================================================== */
+
+const IE_BOX_W = 320;
+const IE_BOX_H = 240;
+let _ie = null; // { natW, natH, rotation, zoom, offsetX, offsetY, url, onApply }
+
+function ieComputeMatrix(boxW, boxH, natW, natH, rotationDeg, zoom, offsetX, offsetY) {
+  const theta = rotationDeg * Math.PI / 180;
+  const rotated = Math.abs(rotationDeg % 180) === 90;
+  const w = rotated ? natH : natW;
+  const h = rotated ? natW : natH;
+  const baseScale = Math.max(boxW / w, boxH / h);
+  const s = baseScale * zoom;
+  const cos = Math.cos(theta), sin = Math.sin(theta);
+  const a = s * cos, b = s * sin, c = -s * sin, d = s * cos;
+  const pivotX = natW / 2, pivotY = natH / 2;
+  const centerX = boxW / 2 + offsetX;
+  const centerY = boxH / 2 + offsetY;
+  const e = centerX - (a * pivotX + c * pivotY);
+  const f = centerY - (b * pivotX + d * pivotY);
+  return { a, b, c, d, e, f, baseScale };
+}
+
+function ieClamp() {
+  const { baseScale } = ieComputeMatrix(IE_BOX_W, IE_BOX_H, _ie.natW, _ie.natH, _ie.rotation, _ie.zoom, 0, 0);
+  const s = baseScale * _ie.zoom;
+  const rotated = Math.abs(_ie.rotation % 180) === 90;
+  const onW = (rotated ? _ie.natH : _ie.natW) * s;
+  const onH = (rotated ? _ie.natW : _ie.natH) * s;
+  const maxX = Math.max(0, (onW - IE_BOX_W) / 2);
+  const maxY = Math.max(0, (onH - IE_BOX_H) / 2);
+  _ie.offsetX = Math.min(maxX, Math.max(-maxX, _ie.offsetX));
+  _ie.offsetY = Math.min(maxY, Math.max(-maxY, _ie.offsetY));
+}
+
+function ieRender() {
+  ieClamp();
+  const m = ieComputeMatrix(IE_BOX_W, IE_BOX_H, _ie.natW, _ie.natH, _ie.rotation, _ie.zoom, _ie.offsetX, _ie.offsetY);
+  document.getElementById('img-editor-img').style.transform =
+    `matrix(${m.a},${m.b},${m.c},${m.d},${m.e},${m.f})`;
+}
+
+function openImageEditor(file, onApply) {
+  const url = URL.createObjectURL(file);
+  const imgEl = document.getElementById('img-editor-img');
+  imgEl.onload = () => {
+    _ie = { natW: imgEl.naturalWidth, natH: imgEl.naturalHeight, rotation: 0, zoom: 1, offsetX: 0, offsetY: 0, url, onApply };
+    ieRender();
+  };
+  imgEl.src = url;
+  document.getElementById('img-editor-overlay').style.display = 'flex';
+}
+
+function closeImageEditor() {
+  document.getElementById('img-editor-overlay').style.display = 'none';
+  if (_ie) {
+    URL.revokeObjectURL(_ie.url);
+    _ie = null;
+  }
+  document.getElementById('img-editor-img').src = '';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const viewport = document.getElementById('img-editor-viewport');
+
+  document.getElementById('ie-rotate-left').addEventListener('click', () => {
+    _ie.rotation = (_ie.rotation - 90 + 360) % 360; ieRender();
+  });
+  document.getElementById('ie-rotate-right').addEventListener('click', () => {
+    _ie.rotation = (_ie.rotation + 90) % 360; ieRender();
+  });
+  document.getElementById('ie-zoom-in').addEventListener('click', () => {
+    _ie.zoom = Math.min(4, _ie.zoom * 1.2); ieRender();
+  });
+  document.getElementById('ie-zoom-out').addEventListener('click', () => {
+    _ie.zoom = Math.max(0.3, _ie.zoom / 1.2); ieRender();
+  });
+  document.getElementById('ie-center').addEventListener('click', () => {
+    _ie.zoom = 1; _ie.offsetX = 0; _ie.offsetY = 0; ieRender();
+  });
+  document.getElementById('ie-cancel').addEventListener('click', closeImageEditor);
+  document.getElementById('img-editor-close').addEventListener('click', closeImageEditor);
+
+  let dragging = false, startX = 0, startY = 0, startOffX = 0, startOffY = 0;
+  viewport.addEventListener('pointerdown', e => {
+    if (!_ie) return;
+    dragging = true;
+    startX = e.clientX; startY = e.clientY;
+    startOffX = _ie.offsetX; startOffY = _ie.offsetY;
+    viewport.setPointerCapture(e.pointerId);
+  });
+  viewport.addEventListener('pointermove', e => {
+    if (!dragging || !_ie) return;
+    _ie.offsetX = startOffX + (e.clientX - startX);
+    _ie.offsetY = startOffY + (e.clientY - startY);
+    ieRender();
+  });
+  viewport.addEventListener('pointerup', () => { dragging = false; });
+  viewport.addEventListener('pointercancel', () => { dragging = false; });
+
+  document.getElementById('ie-apply').addEventListener('click', () => {
+    if (!_ie) return;
+    const outW = 800, outH = 600;
+    const k = outW / IE_BOX_W;
+    const m = ieComputeMatrix(outW, outH, _ie.natW, _ie.natH, _ie.rotation, _ie.zoom, _ie.offsetX * k, _ie.offsetY * k);
+    const canvas = document.createElement('canvas');
+    canvas.width = outW;
+    canvas.height = outH;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, outW, outH);
+    ctx.setTransform(m.a, m.b, m.c, m.d, m.e, m.f);
+    ctx.drawImage(document.getElementById('img-editor-img'), 0, 0, _ie.natW, _ie.natH);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    canvas.toBlob(blob => {
+      const onApply = _ie.onApply;
+      closeImageEditor();
+      onApply(blob);
+    }, 'image/jpeg', 0.9);
+  });
+});
+
+/* Gerenciador de fotos do pet: até `maxCount`, com escolha da foto principal.
+   Suporta fotos já salvas no servidor (type 'existing') e novas (type 'new'). */
+let _petImgIdSeq = 1;
+
+function createPetImageManager(gridId, maxCount = 4) {
+  const grid = document.getElementById(gridId);
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'image/*';
+  fileInput.style.display = 'none';
+  grid.after(fileInput);
+
+  const state = { images: [], mainId: null, deletedExistingIds: [] };
+
+  function render() {
+    const tiles = state.images.map(img => `
+      <div class="pet-img-tile" data-id="${img.id}">
+        <img src="${img.url}" alt="Foto do pet">
+        <button type="button" class="pet-img-remove" data-action="remove" data-id="${img.id}" aria-label="Remover">&times;</button>
+        ${img.id === state.mainId
+          ? '<span class="pet-img-main-badge">Foto principal</span>'
+          : `<button type="button" class="pet-img-set-main" data-action="main" data-id="${img.id}">Definir como principal</button>`}
+      </div>`).join('');
+
+    const addTile = state.images.length < maxCount
+      ? `<div class="pet-img-add" data-action="add">
+           <span class="pet-img-add-icon">+</span>
+           <span>Adicionar foto</span>
+         </div>`
+      : '';
+
+    grid.innerHTML = tiles + addTile;
+  }
+
+  grid.addEventListener('click', e => {
+    const target = e.target.closest('[data-action]');
+    if (!target) return;
+    const action = target.dataset.action;
+    const id = target.dataset.id;
+
+    if (action === 'add') {
+      fileInput.value = '';
+      fileInput.click();
+    } else if (action === 'remove') {
+      const removed = state.images.find(i => i.id === id);
+      if (!removed) return;
+      if (removed.type === 'new') {
+        URL.revokeObjectURL(removed.url);
+      } else {
+        state.deletedExistingIds.push(removed.serverId);
+      }
+      state.images = state.images.filter(i => i.id !== id);
+      if (state.mainId === id) {
+        state.mainId = state.images.length ? state.images[0].id : null;
+      }
+      render();
+    } else if (action === 'main') {
+      state.mainId = id;
+      render();
+    }
+  });
+
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files[0];
+    if (!file || state.images.length >= maxCount) return;
+    openImageEditor(file, blob => {
+      const id = 'new-' + (_petImgIdSeq++);
+      const url = URL.createObjectURL(blob);
+      state.images.push({ id, type: 'new', blob, url });
+      if (state.mainId === null) state.mainId = id;
+      render();
+    });
+  });
+
+  render();
+
+  return {
+    getBlobs: () => state.images.map(i => i.blob),
+    getCoverIndex: () => {
+      const idx = state.images.findIndex(i => i.id === state.mainId);
+      return idx === -1 ? 0 : idx;
+    },
+    count: () => state.images.length,
+    reset: () => {
+      state.images.forEach(i => { if (i.type === 'new') URL.revokeObjectURL(i.url); });
+      state.images = [];
+      state.mainId = null;
+      state.deletedExistingIds = [];
+      render();
+    },
+
+    /* Carrega fotos já salvas no servidor (usado na edição) */
+    loadExisting: (existingImages) => {
+      state.images = existingImages.map(img => ({
+        id: 'existing-' + img.id,
+        type: 'existing',
+        serverId: img.id,
+        url: img.image,
+      }));
+      const cover = existingImages.find(img => img.is_cover);
+      state.mainId = cover ? 'existing-' + cover.id : (state.images.length ? state.images[0].id : null);
+      state.deletedExistingIds = [];
+      render();
+    },
+    getNewBlobs: () => state.images.filter(i => i.type === 'new').map(i => i.blob),
+    getCoverIndexAmongNew: () => state.images.filter(i => i.type === 'new').findIndex(i => i.id === state.mainId),
+    getCoverExistingId: () => {
+      const found = state.images.find(i => i.id === state.mainId && i.type === 'existing');
+      return found ? found.serverId : null;
+    },
+    getDeletedExistingIds: () => state.deletedExistingIds.slice(),
+  };
 }
 
 function showAlert(selector, message, type = 'error') {
